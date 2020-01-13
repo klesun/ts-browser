@@ -1,7 +1,7 @@
 # ts-browser
 Run typescript files on the fly with dependencies. Like [ts-node](https://www.npmjs.com/package/ts-node), but for browser.
 
-Perfect fallback solution for environments that are only supposed to host source files, not compiled ones (like [GitHub Pages](https://help.github.com/en/github/working-with-github-pages/about-github-pages)).
+Perfect fallback solution for environments that are only supposed to host static source files (like [GitHub Pages](https://help.github.com/en/github/working-with-github-pages/about-github-pages)).
 
 Usage: ([sample project](https://github.com/klesun/klesun.github.io/tree/master/entry/midiana))
 ```html
