@@ -16,7 +16,7 @@ Usage: ([sample project](https://github.com/klesun/klesun.github.io/tree/master/
 
 The script uses [`typescriptServices.js`](https://github.com/microsoft/TypeScript/blob/master/lib/typescriptServices.d.ts) to parse ts file for dependencies and transpile it to js.
 
-Each file loads about 10-50 milliseconds, not sure if
+Each file loads about 10-50 milliseconds. Not sure if it can be optimised somehow, like passing all files to `ts.transpile()` at once, or with some params, would need research.
 
 The behaviour on circular dependencies may be not what you expect: I tried to mimick typescript's behaviour (which allows circular dependencies) by creating a [`Proxy` object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy) for the module which throws errors if you attempt to access a field before module fully loaded. If this appears to be inconsistent, you can file an issue with minimal example - I'll think of a better way to implement circular dependencies then.
 
