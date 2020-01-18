@@ -121,6 +121,17 @@ const fetchDependencyFiles = async (entryUrls) => {
 
 const CACHE_LOADED = 'ts-browser-loaded-modules';
 
+/** @cudos to https://stackoverflow.com/a/30106551/2750743 */
+function b64EncodeUnicode(str) {
+    // first we use encodeURIComponent to get percent-encoded UTF-8,
+    // then we convert the percent encodings into raw bytes which
+    // can be fed into btoa.
+    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g,
+        function toSolidBytes(match, p1) {
+            return String.fromCharCode('0x' + p1);
+        }));
+}
+
 /** @return {Promise<Module>} - just  */
 const loadModulePlain = (baseUrl, cachedFiles) => {
     const modulePromises = {};
@@ -173,7 +184,17 @@ const loadModulePlain = (baseUrl, cachedFiles) => {
             module: 5, target: 5 /* ES2018 */,
         });
         jsCode += '\n//# sourceURL=' + baseUrl;
-        return import('data:text/javascript;base64,' + btoa(jsCode));
+        let base64Code;
+        try {
+            base64Code = b64EncodeUnicode(jsCode);
+        } catch (exc) {
+            const msg = exc.message + '\nbtoa() failed on ' + baseUrl;
+            const newExc = new Error(msg);
+            newExc.tsCode = tsCodeResult;
+            newExc.jsCode = jsCode;
+            throw newExc;
+        }
+        return import('data:text/javascript;base64,' + base64Code);
     };
 
     return load(baseUrl);
