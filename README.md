@@ -5,13 +5,22 @@ Perfect fallback solution for environments that are only supposed to host static
 
 Usage: ([sample project](https://github.com/klesun/klesun.github.io/tree/master/entry/midiana))
 ```html
+<!-- index.html -->
 <script src="https://klesun-misc.github.io/TypeScript/lib/typescriptServices.js"></script>
 <script type="module">
     import {loadModule} from 'https://klesun.github.io/ts-browser/src/ts-browser.js';
-    loadModule('./index.ts').then(Handler => {
-        return Handler.Handler(document.getElementById('composeCont'));
+    loadModule('./index.ts').then(indexModule => {
+        return indexModule.default(document.getElementById('composeCont'));
     });
 </script>
+```
+```typescript
+// index.ts
+import {makePanel} from './utils/SomeDomMaker.ts';
+
+export default (composeCont) => {
+    composeCont.appendChild(makePanel());
+};
 ```
 
 The script uses [`typescriptServices.js`](https://github.com/microsoft/TypeScript/blob/master/lib/typescriptServices.d.ts) to parse ts file for dependencies and transpile it to js.
