@@ -53,12 +53,15 @@ const tryLoadSideEffectsJsModule = (jsCode) => {
         const globalsBefore = new Set(Object.keys(window));
         const self = {};
         const evalResult = eval.apply(self, [jsCode]);
-        const newGlobals = Object.keys(window).filter(k => !globalsBefore.has(k));
-        const result = {
-            moduleType: 'SIDE_EFFECT_JS_LIB',
+        const newGlobals = Object.keys(window)
+            .filter(k => !globalsBefore.has(k));
+        const result = {};
+        for (const name of newGlobals) {
+            result[name] = window[name];
+        }
+        console.debug('side-effects js lib loaded', {
             evalResult, self, newGlobals,
-        };
-        console.debug('side-effects js lib loaded', result);
+        });
         return result;
     } catch (exc) {
         // Unexpected token 'import/export' - means it is a es6 module
