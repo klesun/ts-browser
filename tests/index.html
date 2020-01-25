@@ -1,0 +1,15 @@
+<html>
+<body>
+<p>Tests in progress...</p>
+<script type="module">
+    import {testCases, test} from './UrlPathResolverTest.js';
+    const testedPromises = testCases.map(test);
+    Promise.all(testedPromises)
+        .then(() => alert('No errors, tested ' + testedPromises.length))
+        .catch(exc => {
+            console.error(exc);
+            alert('Got errors, see console - ' + exc);
+        });
+</script>
+</body>
+</html>

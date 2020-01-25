@@ -5,44 +5,7 @@
  * though in order to use it, you'll need a very specific import pattern in all files
  */
 import {oneSuccess} from "./utils.js";
-
-const addPathToUrl = (path, url) => {
-    let result;
-    if (path.startsWith('/') || path.match(/^https?:\/\//)) {
-        // full path from the site root
-        result = path;
-    } else if (!path.startsWith('./') && !path.startsWith('../')) {
-        // apparently, typescript compiler marks paths from root this way
-        // src/utils/Dom, weird, but ok
-        result = '/' + path;
-    } else {
-        const urlParts = url.split('/');
-        const pathParts = path.split('/');
-
-        if (urlParts.slice(-1)[0] !== '') {
-            // does not end with a slash - script, not directory
-            urlParts.pop();
-        }
-
-        // getting rid of trailing slashes if any
-        while (pathParts[0] === '') pathParts.shift();
-        while (urlParts.slice(-1)[0] === '') urlParts.pop();
-
-        while (pathParts.length > 0 && urlParts.length > 0) {
-            if (pathParts[0] === '.') {
-                pathParts.shift();
-            } else if (pathParts[0] === '..') {
-                pathParts.shift();
-                urlParts.pop();
-            } else {
-                break;
-            }
-        }
-        result = urlParts.join('/') + '/' + pathParts.join('/');
-    }
-
-    return result;
-};
+import {addPathToUrl} from "./UrlPathResolver.js";
 
 /**
  * @param {ts.ImportClause} importClause - `{Field1, Field2}`
