@@ -223,7 +223,7 @@ const LoadRootModule = ({
                 });
             jsCode += '\n//# sourceURL=' + baseUrl;
             const base64Code = b64EncodeUnicode(jsCode);
-            if (jsCode) {
+            if (isJsSrc) {
                 try {
                     // trying to support non es6 modules
                     const self = {};
