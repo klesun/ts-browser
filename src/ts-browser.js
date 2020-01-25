@@ -59,7 +59,7 @@ const tryLoadSideEffectsJsModule = (jsCode) => {
         for (const name of newGlobals) {
             result[name] = window[name];
         }
-        if (new Set(newGlobals).size === 1) {
+        if (new Set(newGlobals.map(g => window[g])).size === 1) {
             result['default'] = window[newGlobals[0]];
         }
         console.debug('side-effects js lib loaded', {
