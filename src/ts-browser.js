@@ -50,11 +50,13 @@ const b64EncodeUnicode = (str) => {
 const tryLoadSideEffectsJsModule = (jsCode) => {
     try {
         // trying to support non es6 modules
+        const globalsBefore = new Set(Object.keys(window));
         const self = {};
         const evalResult = eval.apply(self, [jsCode]);
+        const newGlobals = Object.keys(window).filter(k => !globalsBefore.has(k));
         return {
             moduleType: 'SIDE_EFFECT_JS_LIB',
-            evalResult, self,
+            evalResult, self, newGlobals,
         };
     } catch (exc) {
         // Unexpected token 'import/export' - means it is a es6 module
@@ -228,10 +230,11 @@ const LoadRootModule = async ({
             jsCode += '\n//# sourceURL=' + baseUrl;
             const base64Code = b64EncodeUnicode(jsCode);
             if (isJsSrc) {
-                if (tryLoadSideEffectsJsModule) {
+                const loaded = tryLoadSideEffectsJsModule(jsCode);
+                if (loaded) {
                     // only side effect imports supported, as binding
                     // AMD/CJS modules with es6 has some problems
-                    return Promise.resolve();
+                    return Promise.resolve(loaded);
                 }
             }
             return import('data:text/javascript;base64,' + base64Code);
