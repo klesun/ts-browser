@@ -74,7 +74,7 @@ const es6ToDestr = (tsCode, importClause) => {
 };
 
 /** @cudos to https://stackoverflow.com/a/30106551/2750743 */
-function b64EncodeUnicode(str) {
+const b64EncodeUnicode = (str) => {
     // first we use encodeURIComponent to get percent-encoded UTF-8,
     // then we convert the percent encodings into raw bytes which
     // can be fed into btoa.
@@ -82,17 +82,58 @@ function b64EncodeUnicode(str) {
         function toSolidBytes(match, p1) {
             return String.fromCharCode('0x' + p1);
         }));
-}
+};
+
+const tryLoadSideEffectsJsModule = (jsCode) => {
+    try {
+        // trying to support non es6 modules
+        const self = {};
+        const evalResult = eval.apply(self, [jsCode]);
+        return {
+            moduleType: 'SIDE_EFFECT_JS_LIB',
+            evalResult, self,
+        };
+    } catch (exc) {
+        // Unexpected token 'import/export' - means it is a es6 module
+        return null;
+    }
+};
 
 const CACHE_LOADED = 'ts-browser-loaded-modules';
 const explicitExtensions = ['ts', 'js', 'tsx', 'jsx'];
+let whenTypescriptServices = null;
+
+/** @return {Promise<ts>} */
+const getTs = () => {
+    if (!whenTypescriptServices) {
+        if (window.ts) {
+            whenTypescriptServices = Promise.resolve(window.ts);
+        } else {
+            // kind of lame that typescript does not provide it's own CDN
+            const url = 'https://klesun-misc.github.io/TypeScript/lib/typescriptServices.js';
+            whenTypescriptServices = fetch(url)
+                .then(rs => rs.text())
+                .then(jsCode => {
+                    jsCode += '\nwindow.ts = ts;';
+                    jsCode += '\n//# sourceURL=' + url;
+                    if (tryLoadSideEffectsJsModule(jsCode)) {
+                        return Promise.resolve(window.ts);
+                    } else {
+                        return Promise.reject(new Error('Failed to load typescriptServices.js'));
+                    }
+                });
+        }
+    }
+    return whenTypescriptServices;
+};
 
 /** @param {ts.CompilerOptions} compilerOptions */
-const LoadRootModule = ({
+const LoadRootModule = async ({
     rootModuleUrl,
     compilerOptions = {},
 }) => {
-    const targetLanguageVersion = compilerOptions.target || window.ts.ScriptTarget.ES2018;
+    const ts = await getTs();
+    const targetLanguageVersion = compilerOptions.target || ts.ScriptTarget.ES2018;
 
     const fetchModuleData = url => {
         // typescript does not allow specifying extension in the import, but react
@@ -118,13 +159,13 @@ const LoadRootModule = ({
         return whenResource
             .then(async ({fullUrl, tsCode}) => {
                 const extension = fullUrl.replace(/^.*\./, '');
-                const sourceFile = window.ts.createSourceFile(
+                const sourceFile = ts.createSourceFile(
                     'ololo.' + extension, tsCode, targetLanguageVersion
                 );
                 let tsCodeAfterImports = '';
                 const dependencies = [];
                 for (const statement of sourceFile.statements) {
-                    const kindName = window.ts.SyntaxKind[statement.kind];
+                    const kindName = ts.SyntaxKind[statement.kind];
                     if (kindName === 'ImportDeclaration') {
                         const relPath = statement.moduleSpecifier.text;
                         const {importClause = null} = statement;
@@ -217,22 +258,17 @@ const LoadRootModule = ({
             const tsCodeResult = tsCodeImports + '\n' + fileData.tsCodeAfterImports;
             const isJsSrc = fileData.extension === 'js';
             let jsCode = isJsSrc ? tsCodeResult :
-                window.ts.transpile(tsCodeResult, {
+                ts.transpile(tsCodeResult, {
                     module: 5, target: targetLanguageVersion /* ES2018 */,
                     ...compilerOptions,
                 });
             jsCode += '\n//# sourceURL=' + baseUrl;
             const base64Code = b64EncodeUnicode(jsCode);
             if (isJsSrc) {
-                try {
-                    // trying to support non es6 modules
-                    const self = {};
-                    eval.apply(self, [jsCode]);
+                if (tryLoadSideEffectsJsModule) {
                     // only side effect imports supported, as binding
                     // AMD/CJS modules with es6 has some problems
                     return Promise.resolve();
-                } catch (exc) {
-                    // Unexpected token 'import/export' - means it is a es6 module
                 }
             }
             return import('data:text/javascript;base64,' + base64Code);
