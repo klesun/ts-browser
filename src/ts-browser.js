@@ -1,14 +1,14 @@
-
 /**
  * @module ts-browser - like ts-node, this tool allows you
  * to require typescript files and compiles then on the fly
  *
  * though in order to use it, you'll need a very specific import pattern in all files
  */
+import {oneSuccess} from "./utils.js";
 
 const addPathToUrl = (path, url) => {
     let result;
-    if (path.startsWith('/')) {
+    if (path.startsWith('/') || path.match(/^https?:\/\//)) {
         // full path from the site root
         result = path;
     } else if (!path.startsWith('./') && !path.startsWith('../')) {
@@ -40,7 +40,6 @@ const addPathToUrl = (path, url) => {
         }
         result = urlParts.join('/') + '/' + pathParts.join('/');
     }
-    result = result.endsWith('.ts') || result.endsWith('.js') ? result : result + '.ts';
 
     return result;
 };
@@ -86,35 +85,62 @@ function b64EncodeUnicode(str) {
 }
 
 const CACHE_LOADED = 'ts-browser-loaded-modules';
+const explicitExtensions = ['.ts', '.js', '.tsx', '.jsx'];
 
+/** @param {ts.CompilerOptions} compilerOptions */
 const LoadRootModule = ({
     rootModuleUrl,
     compilerOptions = {},
 }) => {
-    const fetchModuleData = url => fetch(url)
-        .then(rs => rs.text())
-        .then(async tsCode => {
-            const sourceFile = window.ts.createSourceFile('ololo.ts', tsCode);
-            let tsCodeAfterImports = '';
-            const dependencies = [];
-            for (const statement of sourceFile.statements) {
-                const kindName = window.ts.SyntaxKind[statement.kind];
-                if (kindName === 'ImportDeclaration') {
-                    const relPath = statement.moduleSpecifier.text;
-                    const {importClause = null} = statement;
-                    dependencies.push({
-                        url: addPathToUrl(relPath, url),
-                        // can be not set in case of side-effectish `import './some/url.css';`
-                        destrJsPart: importClause
-                            ? es6ToDestr(tsCode, importClause) : '',
-                    });
-                } else {
-                    const {pos, end} = statement;
-                    tsCodeAfterImports += tsCode.slice(pos, end) + '\n';
-                }
+    const targetLanguageVersion = compilerOptions.target || window.ts.ScriptTarget.ES2018;
+
+    const fetchModuleData = url => {
+        // typescript does not allow specifying extension in the import, but react
+        // files may have .tsx extension rather than .ts, so have to check both
+        const urlOptions = [];
+        if (explicitExtensions.some(ext => url.endsWith(ext))) {
+            urlOptions.push(url);
+        } else {
+            urlOptions.push(url + '.ts');
+            if (compilerOptions.jsx) {
+                urlOptions.push(url + '.tsx');
             }
-            return {url, dependencies, tsCodeAfterImports};
-        });
+        }
+        const whenResource = oneSuccess(urlOptions.map(fullUrl => fetch(fullUrl)
+            .then(rs => {
+                if (rs.status === 200) {
+                    return rs.text().then(tsCode => ({fullUrl, tsCode}));
+                } else {
+                    const msg = 'Failed to fetch module file ' + rs.status + ': ' + fullUrl;
+                    return Promise.reject(new Error(msg));
+                }
+            })));
+        return whenResource
+            .then(async ({fullUrl, tsCode}) => {
+                const sourceFile = window.ts.createSourceFile(
+                    fullUrl.replace(/^.*\//, ''), tsCode, targetLanguageVersion
+                );
+                let tsCodeAfterImports = '';
+                const dependencies = [];
+                for (const statement of sourceFile.statements) {
+                    const kindName = window.ts.SyntaxKind[statement.kind];
+                    if (kindName === 'ImportDeclaration') {
+                        const relPath = statement.moduleSpecifier.text;
+                        const {importClause = null} = statement;
+                        dependencies.push({
+                            url: addPathToUrl(relPath, url),
+                            // can be not set in case of side-effectish `import './some/url.css';`
+                            destrJsPart: importClause
+                                ? es6ToDestr(tsCode, importClause) : '',
+                        });
+                    } else {
+                        const {pos, end} = statement;
+                        tsCodeAfterImports += tsCode.slice(pos, end) + '\n';
+                    }
+                }
+                return {url, dependencies, tsCodeAfterImports};
+            });
+    };
 
     const fetchDependencyFiles = async (entryUrls) => {
         const cachedFiles = {};
@@ -189,7 +215,7 @@ const LoadRootModule = ({
             }
             const tsCodeResult = tsCodeImports + '\n' + fileData.tsCodeAfterImports;
             let jsCode = window.ts.transpile(tsCodeResult, {
-                module: 5, target: 5 /* ES2018 */,
+                module: 5, target: targetLanguageVersion /* ES2018 */,
                 ...compilerOptions,
             });
             jsCode += '\n//# sourceURL=' + baseUrl;
