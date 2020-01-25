@@ -6,7 +6,6 @@ Perfect fallback solution for environments that are only supposed to host static
 Usage: ([sample project](https://github.com/klesun/klesun.github.io/tree/master/entry/midiana))
 ```html
 <!-- index.html -->
-<script src="https://klesun-misc.github.io/TypeScript/lib/typescriptServices.js"></script>
 <script type="module">
     import {loadModule} from 'https://klesun.github.io/ts-browser/src/ts-browser.js';
     loadModule('./index.ts').then(indexModule => {
@@ -16,7 +15,7 @@ Usage: ([sample project](https://github.com/klesun/klesun.github.io/tree/master/
 ```
 ```typescript
 // index.ts
-import {makePanel} from './utils/SomeDomMaker.ts';
+import {makePanel} from './utils/SomeDomMaker';
 
 export default (composeCont) => {
     composeCont.appendChild(makePanel());
