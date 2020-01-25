@@ -85,7 +85,7 @@ function b64EncodeUnicode(str) {
 }
 
 const CACHE_LOADED = 'ts-browser-loaded-modules';
-const explicitExtensions = ['.ts', '.js', '.tsx', '.jsx'];
+const explicitExtensions = ['ts', 'js', 'tsx', 'jsx'];
 
 /** @param {ts.CompilerOptions} compilerOptions */
 const LoadRootModule = ({
@@ -98,7 +98,7 @@ const LoadRootModule = ({
         // typescript does not allow specifying extension in the import, but react
         // files may have .tsx extension rather than .ts, so have to check both
         const urlOptions = [];
-        if (explicitExtensions.some(ext => url.endsWith(ext))) {
+        if (explicitExtensions.some(ext => url.endsWith('.' + ext))) {
             urlOptions.push(url);
         } else {
             urlOptions.push(url + '.ts');
@@ -117,8 +117,9 @@ const LoadRootModule = ({
             })));
         return whenResource
             .then(async ({fullUrl, tsCode}) => {
+                const extension = fullUrl.replace(/^.*\./, '');
                 const sourceFile = window.ts.createSourceFile(
-                    fullUrl.replace(/^.*\//, ''), tsCode, targetLanguageVersion
+                    'ololo.' + extension, tsCode, targetLanguageVersion
                 );
                 let tsCodeAfterImports = '';
                 const dependencies = [];
@@ -138,7 +139,7 @@ const LoadRootModule = ({
                         tsCodeAfterImports += tsCode.slice(pos, end) + '\n';
                     }
                 }
-                return {url, dependencies, tsCodeAfterImports};
+                return {url, extension, dependencies, tsCodeAfterImports};
             });
     };
 
@@ -214,20 +215,25 @@ const LoadRootModule = ({
                 }
             }
             const tsCodeResult = tsCodeImports + '\n' + fileData.tsCodeAfterImports;
-            let jsCode = window.ts.transpile(tsCodeResult, {
-                module: 5, target: targetLanguageVersion /* ES2018 */,
-                ...compilerOptions,
-            });
+            const isJsSrc = fileData.extension === 'js';
+            let jsCode = isJsSrc ? tsCodeResult :
+                window.ts.transpile(tsCodeResult, {
+                    module: 5, target: targetLanguageVersion /* ES2018 */,
+                    ...compilerOptions,
+                });
             jsCode += '\n//# sourceURL=' + baseUrl;
-            let base64Code;
-            try {
-                base64Code = b64EncodeUnicode(jsCode);
-            } catch (exc) {
-                const msg = exc.message + '\nbtoa() failed on ' + baseUrl;
-                const newExc = new Error(msg);
-                newExc.tsCode = tsCodeResult;
-                newExc.jsCode = jsCode;
-                throw newExc;
+            const base64Code = b64EncodeUnicode(jsCode);
+            if (jsCode) {
+                try {
+                    // trying to support non es6 modules
+                    const self = {};
+                    eval.apply(self, [jsCode]);
+                    // only side effect imports supported, as binding
+                    // AMD/CJS modules with es6 has some problems
+                    return Promise.resolve();
+                } catch (exc) {
+                    // Unexpected token 'import/export' - means it is a es6 module
+                }
             }
             return import('data:text/javascript;base64,' + base64Code);
         };
