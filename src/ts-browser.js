@@ -62,10 +62,19 @@ const tryLoadSideEffectsJsModule = (jsCode) => {
         if (new Set(newGlobals.map(g => window[g])).size === 1) {
             result['default'] = window[newGlobals[0]];
         }
-        console.debug('side-effects js lib loaded', {
+        const name = jsCode.slice(-100).replace(/[\s\S]*\//, '');
+        console.debug('side-effects js lib loaded ' + name, {
             newGlobals, evalResult, self,
         });
-        return result;
+        if (newGlobals.length === 0) {
+            const msg = 'warning: imported lib ' + name + ' did not add any keys to window. ' +
+                'If it is imported in both html and js, you can only use it with side-effects ' +
+                'import like `import "someLib.js"; const someLib = window.someLib;`';
+            console.warn(msg);
+            return {warning: msg};
+        } else {
+            return result;
+        }
     } catch (exc) {
         // Unexpected token 'import/export' - means it is a es6 module
         return null;
@@ -148,6 +157,8 @@ const LoadRootModule = async ({
                             destrJsPart: importClause
                                 ? es6ToDestr(tsCode, importClause) : '',
                         });
+                        // leaving a blank line so that stack trace matched original lines
+                        tsCodeAfterImports += '\n';
                     } else {
                         const {pos, end} = statement;
                         tsCodeAfterImports += tsCode.slice(pos, end) + '\n';
