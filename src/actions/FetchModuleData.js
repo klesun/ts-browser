@@ -85,7 +85,8 @@ const FetchModuleData = ({ts, url, compilerOptions}) => {
                         (node.arguments || []).length === 1
                     ) {
                         const ident = 'window[' + JSON.stringify(IMPORT_DYNAMIC) + ']';
-                        const newCallCode = ident + '(' + getNodeText(node.arguments[0]) + ')';
+                        // the leading space is important, cuz transpiler glues `await` to `window` otherwise
+                        const newCallCode = ' ' + ident + '(' + getNodeText(node.arguments[0]) + ')';
                         resultParts.push(newCallCode);
                         return;
                     }
