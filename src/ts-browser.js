@@ -1,8 +1,8 @@
 
 import {b64EncodeUnicode} from "./utils.js";
-import FetchModuleData from "./actions/FetchModuleData.js";
 import {addPathToUrl} from "./UrlPathResolver.js";
 import {CACHE_LOADED, IMPORT_DYNAMIC} from "./actions/ParseTsModule.js";
+import WorkerManager from "./WorkerManager.js";
 
 /**
  * @module ts-browser - like ts-node, this tool allows you
@@ -149,14 +149,13 @@ const LoadRootModule = async ({
 }) => {
     const ts = await getTs();
     compilerOptions.target = compilerOptions.target || ts.ScriptTarget.ES2018;
-
-    const fetchModuleData = url => FetchModuleData({ts, url, compilerOptions});
+    const workerManager = WorkerManager({ts, compilerOptions});
 
     const cachedFiles = {};
     const urlToWhenFileData = {};
     const getFileData = url => {
         if (!urlToWhenFileData[url]) {
-            urlToWhenFileData[url] = fetchModuleData(url);
+            urlToWhenFileData[url] = workerManager.fetchModuleData(url);
         }
         return urlToWhenFileData[url];
     };
@@ -167,7 +166,11 @@ const LoadRootModule = async ({
             urlToPromise[entryUrl] = getFileData(entryUrl);
         }
         let promises;
+        let safeguard = 100000;
         while ((promises = Object.values(urlToPromise)).length > 0) {
+            if (--safeguard <= 0) {
+                throw new Error('Got into infinite loop while fetching dependencies of ' + entryUrls);
+            }
             const next = await Promise.race(promises);
             cachedFiles[next.url] = next;
             delete urlToPromise[next.url];
