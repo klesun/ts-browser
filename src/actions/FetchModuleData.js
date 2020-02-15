@@ -34,6 +34,7 @@ const es6ToDestr = (tsCode, importClause) => {
 const EXPLICIT_EXTENSIONS = ['ts', 'js', 'tsx', 'jsx'];
 
 export const CACHE_LOADED = 'ts-browser-loaded-modules';
+export const IMPORT_DYNAMIC = 'ts-browser-import-dynamic';
 
 /**
  * @param {ts} ts
@@ -68,7 +69,49 @@ const FetchModuleData = ({ts, url, compilerOptions}) => {
             );
             let jsCodeImports = '';
             let tsCodeAfterImports = '';
-            const dependencies = [];
+            const staticDependencies = [];
+
+            const getNodeText = node => {
+                const {pos, end} = node;
+                return tsCode.slice(pos, end);
+            };
+
+            const transformStatement = (statement) => {
+                const resultParts = [];
+                /** @param {ts.Node} node */
+                const consumeAst = (node) => {
+                    if (ts.SyntaxKind[node.kind] === 'CallExpression' &&
+                        ts.SyntaxKind[(node.expression || {}).kind] === 'ImportKeyword' &&
+                        (node.arguments || []).length === 1
+                    ) {
+                        const ident = 'window[' + JSON.stringify(IMPORT_DYNAMIC) + ']';
+                        const newCallCode = ident + '(' + getNodeText(node.arguments[0]) + ')';
+                        resultParts.push(newCallCode);
+                        return;
+                    }
+                    const childCount = node.getChildCount(sourceFile);
+                    let hasChildren = childCount > 0;
+                    if (!hasChildren) { // leaf node
+                        resultParts.push(getNodeText(node));
+                    } else {
+                        let started = false;
+                        for (let i = 0; i < childCount; ++i) {
+                            const child = node.getChildAt(i, sourceFile);
+                            if (!started && child.pos > node.pos) {
+                                // following JSDOC node contents are duplicated here for some
+                                // reason, hope this check will cover all similar cases
+                            } else {
+                                started = true;
+                                consumeAst(child);
+                            }
+                        }
+                    }
+                };
+                //resultParts.push(getNodeText(statement));
+                consumeAst(statement);
+                return resultParts.join('');
+            };
+
             for (const statement of sourceFile.statements) {
                 const kindName = ts.SyntaxKind[statement.kind];
                 if (kindName === 'ImportDeclaration') {
@@ -83,10 +126,9 @@ const FetchModuleData = ({ts, url, compilerOptions}) => {
                         // leaving a blank line so that stack trace matched original lines
                         tsCodeAfterImports += '\n';
                     }
-                    dependencies.push({url: depUrl});
+                    staticDependencies.push({url: depUrl});
                 } else {
-                    const {pos, end} = statement;
-                    tsCodeAfterImports += tsCode.slice(pos, end) + '\n';
+                    tsCodeAfterImports += transformStatement(statement) + '\n';
                 }
             }
             const isJsSrc = extension === 'js';
@@ -97,7 +139,7 @@ const FetchModuleData = ({ts, url, compilerOptions}) => {
                 });
             const jsCode = jsCodeImports + jsCodeAfterImports;
 
-            return {url, isJsSrc, dependencies, jsCode};
+            return {url, isJsSrc, staticDependencies, jsCode};
         });
 };
 
