@@ -88,7 +88,7 @@ const LoadRootModule = async ({
             const next = await Promise.race(promises);
             cachedFiles[next.url] = next;
             delete urlToPromise[next.url];
-            for (const {url} of next.dependencies) {
+            for (const {url} of next.staticDependencies) {
                 if (!urlToPromise[url] && !cachedFiles[url]) {
                     urlToPromise[url] = fetchModuleData(url);
                 }
@@ -129,7 +129,7 @@ const LoadRootModule = async ({
         const modulePromises = {};
         const load = async (baseUrl) => {
             const fileData = cachedFiles[baseUrl];
-            for (const dependency of fileData.dependencies) {
+            for (const dependency of fileData.staticDependencies) {
                 const newUrl = dependency.url;
                 window[CACHE_LOADED] = window[CACHE_LOADED] || {};
                 if (!modulePromises[newUrl]) {
