@@ -34,6 +34,7 @@ const es6ToDestr = (tsCode, importClause) => {
 const EXPLICIT_EXTENSIONS = ['ts', 'js', 'tsx', 'jsx'];
 
 export const CACHE_LOADED = 'ts-browser-loaded-modules';
+export const IMPORT_DYNAMIC = 'ts-browser-import-dynamic';
 
 /**
  * @param {ts} ts
@@ -69,7 +70,6 @@ const FetchModuleData = ({ts, url, compilerOptions}) => {
             let jsCodeImports = '';
             let tsCodeAfterImports = '';
             const staticDependencies = [];
-            const dynamicDependencies = [];
 
             const getNodeText = node => {
                 const {pos, end} = node;
@@ -80,6 +80,15 @@ const FetchModuleData = ({ts, url, compilerOptions}) => {
                 const resultParts = [];
                 /** @param {ts.Node} node */
                 const consumeAst = (node) => {
+                    if (ts.SyntaxKind[node.kind] === 'CallExpression' &&
+                        ts.SyntaxKind[(node.expression || {}).kind] === 'ImportKeyword' &&
+                        (node.arguments || []).length === 1
+                    ) {
+                        const ident = 'window[' + JSON.stringify(IMPORT_DYNAMIC) + ']';
+                        const newCallCode = ident + '(' + getNodeText(node.arguments[0]) + ')';
+                        resultParts.push(newCallCode);
+                        return;
+                    }
                     const childCount = node.getChildCount(sourceFile);
                     let hasChildren = childCount > 0;
                     if (!hasChildren) { // leaf node
