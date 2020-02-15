@@ -94,16 +94,19 @@ const makeCircularRefProxy = (whenModule, newUrl) => {
         },
     });
 };
+window[CACHE_LOADED] = window[CACHE_LOADED] || {};
 
 /** @return {Promise<Module>} */
 const loadModuleFromFiles = (baseUrl, cachedFiles) => {
     const modulePromises = {};
     const load = async (baseUrl) => {
+        if (window[CACHE_LOADED][baseUrl]) {
+            // it was already loaded by another dynamic import
+            return Promise.resolve(window[CACHE_LOADED][baseUrl]);
+        }
         const fileData = cachedFiles[baseUrl];
         for (const dependency of fileData.staticDependencies) {
             const newUrl = dependency.url;
-            window[CACHE_LOADED] = window[CACHE_LOADED] || {};
-            window[IMPORT_DYNAMIC] = window[IMPORT_DYNAMIC] || {};
             if (!modulePromises[newUrl]) {
                 let reportOk, reportErr;
                 modulePromises[newUrl] = new Promise((ok,err) => {
@@ -112,6 +115,12 @@ const loadModuleFromFiles = (baseUrl, cachedFiles) => {
                 load(newUrl).then(reportOk).catch(reportErr);
                 window[CACHE_LOADED][newUrl] = await modulePromises[newUrl];
             } else if (!window[CACHE_LOADED][newUrl]) {
+                if (fileData.jsCode.match(/(^|\s+)export\b/)) {
+                    // the check is to exclude type definition-only files, as they have no vars
+                    const msg = 'warning: circular dependency on ' + baseUrl + ' -> ' +
+                        newUrl + ', variables will be empty in module top-level scope';
+                    console.warn(msg);
+                }
                 window[CACHE_LOADED][newUrl] = makeCircularRefProxy(modulePromises[newUrl], newUrl);
             }
         }
@@ -143,10 +152,18 @@ const LoadRootModule = async ({
     const fetchModuleData = url => FetchModuleData({ts, url, compilerOptions});
 
     const cachedFiles = {};
+    const urlToWhenFileData = {};
+    const getFileData = url => {
+        if (!urlToWhenFileData[url]) {
+            urlToWhenFileData[url] = fetchModuleData(url);
+        }
+        return urlToWhenFileData[url];
+    };
+
     const fetchDependencyFiles = async (entryUrls) => {
         const urlToPromise = {};
         for (const entryUrl of entryUrls) {
-            urlToPromise[entryUrl] = fetchModuleData(entryUrl);
+            urlToPromise[entryUrl] = getFileData(entryUrl);
         }
         let promises;
         while ((promises = Object.values(urlToPromise)).length > 0) {
@@ -155,23 +172,22 @@ const LoadRootModule = async ({
             delete urlToPromise[next.url];
             for (const {url} of next.staticDependencies) {
                 if (!urlToPromise[url] && !cachedFiles[url]) {
-                    urlToPromise[url] = fetchModuleData(url);
+                    urlToPromise[url] = getFileData(url);
                 }
             }
         }
         return cachedFiles;
     };
 
+    const importDynamic = async (relUrl, baseUrl) => {
+        const url = addPathToUrl(relUrl, baseUrl);
+        await fetchDependencyFiles([url]);
+        return loadModuleFromFiles(url, cachedFiles);
+    };
+
     const main = async () => {
-        window[IMPORT_DYNAMIC] = async (relUrl, baseUrl) => {
-            const url = addPathToUrl(relUrl, baseUrl);
-            if (!cachedFiles[url]) {
-                await fetchDependencyFiles([url]);
-            }
-            return loadModuleFromFiles(url, cachedFiles);
-        };
-        const cachedFiles = await fetchDependencyFiles([rootModuleUrl]);
-        return loadModuleFromFiles(rootModuleUrl, cachedFiles);
+        window[IMPORT_DYNAMIC] = importDynamic;
+        return importDynamic(rootModuleUrl, './');
     };
 
     return main();
