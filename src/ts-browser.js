@@ -1,6 +1,6 @@
 
 import {b64EncodeUnicode} from "./utils.js";
-import FetchModuleData from "./actions/FetchModuleData.js";
+import FetchModuleData, {CACHE_LOADED} from "./actions/FetchModuleData.js";
 
 /**
  * @module ts-browser - like ts-node, this tool allows you
@@ -41,7 +41,6 @@ const tryLoadSideEffectsJsModule = (jsCode) => {
     }
 };
 
-const CACHE_LOADED = 'ts-browser-loaded-modules';
 let whenTypescriptServices = null;
 
 /** @return {Promise<ts>} */
@@ -125,12 +124,11 @@ const LoadRootModule = async ({
         });
     };
 
-    /** @return {Promise<Module>} - just  */
+    /** @return {Promise<Module>} */
     const loadModuleFromFiles = (baseUrl, cachedFiles) => {
         const modulePromises = {};
         const load = async (baseUrl) => {
             const fileData = cachedFiles[baseUrl];
-            let tsCodeImports = '';
             for (const dependency of fileData.dependencies) {
                 const newUrl = dependency.url;
                 window[CACHE_LOADED] = window[CACHE_LOADED] || {};
@@ -144,21 +142,11 @@ const LoadRootModule = async ({
                 } else if (!window[CACHE_LOADED][newUrl]) {
                     window[CACHE_LOADED][newUrl] = makeCircularRefProxy(modulePromises[newUrl], newUrl);
                 }
-                const assignedValue = 'window[' + JSON.stringify(CACHE_LOADED) + '][' + JSON.stringify(newUrl) + ']';
-                if (dependency.destrJsPart) {
-                    tsCodeImports += dependency.destrJsPart + ' = ' + assignedValue + ';\n';
-                }
             }
-            const tsCodeResult = tsCodeImports + '\n' + fileData.tsCodeAfterImports;
-            const isJsSrc = fileData.extension === 'js';
-            let jsCode = isJsSrc ? tsCodeResult :
-                ts.transpile(tsCodeResult, {
-                    module: 5,
-                    ...compilerOptions,
-                });
-            jsCode += '\n//# sourceURL=' + baseUrl;
+            const jsCode = fileData.jsCode + '\n' +
+                '//# sourceURL=' + baseUrl;
             const base64Code = b64EncodeUnicode(jsCode);
-            if (isJsSrc) {
+            if (fileData.isJsSrc) {
                 const loaded = tryLoadSideEffectsJsModule(jsCode);
                 if (loaded) {
                     // only side effect imports supported, as binding

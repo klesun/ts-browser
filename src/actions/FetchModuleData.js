@@ -33,6 +33,8 @@ const es6ToDestr = (tsCode, importClause) => {
 
 const EXPLICIT_EXTENSIONS = ['ts', 'js', 'tsx', 'jsx'];
 
+export const CACHE_LOADED = 'ts-browser-loaded-modules';
+
 /**
  * @param {ts} ts
  * @param {ts.CompilerOptions} compilerOptions
@@ -64,6 +66,7 @@ const FetchModuleData = ({ts, url, compilerOptions}) => {
             const sourceFile = ts.createSourceFile(
                 'ololo.' + extension, tsCode, compilerOptions.target
             );
+            let jsCodeImports = '';
             let tsCodeAfterImports = '';
             const dependencies = [];
             for (const statement of sourceFile.statements) {
@@ -71,20 +74,30 @@ const FetchModuleData = ({ts, url, compilerOptions}) => {
                 if (kindName === 'ImportDeclaration') {
                     const relPath = statement.moduleSpecifier.text;
                     const {importClause = null} = statement;
-                    dependencies.push({
-                        url: addPathToUrl(relPath, url),
+                    const depUrl = addPathToUrl(relPath, url);
+                    if (importClause) {
                         // can be not set in case of side-effectish `import './some/url.css';`
-                        destrJsPart: importClause
-                            ? es6ToDestr(tsCode, importClause) : '',
-                    });
-                    // leaving a blank line so that stack trace matched original lines
-                    tsCodeAfterImports += '\n';
+                        const assignedValue = 'window[' + JSON.stringify(CACHE_LOADED) + '][' + JSON.stringify(depUrl) + ']';
+                        jsCodeImports += es6ToDestr(tsCode, importClause) + ' = ' + assignedValue + ';\n';
+                    } else {
+                        // leaving a blank line so that stack trace matched original lines
+                        tsCodeAfterImports += '\n';
+                    }
+                    dependencies.push({url: depUrl});
                 } else {
                     const {pos, end} = statement;
                     tsCodeAfterImports += tsCode.slice(pos, end) + '\n';
                 }
             }
-            return {url, extension, dependencies, tsCodeAfterImports};
+            const isJsSrc = extension === 'js';
+            const jsCodeAfterImports = isJsSrc ? tsCodeAfterImports :
+                ts.transpile(tsCodeAfterImports, {
+                    module: 5, // es6 imports
+                    ...compilerOptions,
+                });
+            const jsCode = jsCodeImports + jsCodeAfterImports;
+
+            return {url, isJsSrc, dependencies, jsCode};
         });
 };
 
