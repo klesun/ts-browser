@@ -1,7 +1,8 @@
 
 import {b64EncodeUnicode} from "./utils.js";
-import FetchModuleData, {CACHE_LOADED, IMPORT_DYNAMIC} from "./actions/FetchModuleData.js";
+import FetchModuleData from "./actions/FetchModuleData.js";
 import {addPathToUrl} from "./UrlPathResolver.js";
+import {CACHE_LOADED, IMPORT_DYNAMIC} from "./actions/ParseTsModule.js";
 
 /**
  * @module ts-browser - like ts-node, this tool allows you
