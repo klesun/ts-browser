@@ -1,51 +1,11 @@
+
+import {b64EncodeUnicode} from "./utils.js";
+import FetchModuleData from "./actions/FetchModuleData.js";
+
 /**
  * @module ts-browser - like ts-node, this tool allows you
  * to require typescript files and compiles then on the fly
- *
- * though in order to use it, you'll need a very specific import pattern in all files
  */
-import {oneSuccess} from "./utils.js";
-import {addPathToUrl} from "./UrlPathResolver.js";
-
-/**
- * @param {ts.ImportClause} importClause - `{Field1, Field2}`
- */
-const es6ToDestr = (tsCode, importClause) => {
-    const {pos, end} = importClause;
-    const text = tsCode.slice(pos, end);
-    const {namedBindings = null, name = null} = importClause;
-    if (namedBindings) {
-        const {elements = [], name = null} = namedBindings;
-        if (elements.length > 0) {
-            // `import {A, B, C} from './module';`
-            return 'const ' + text;
-        } else if (name && name.escapedText) {
-            return 'const ' + name.escapedText;
-        } else {
-            const exc = new Error('Unsupported namedBindings');
-            exc.data = {namedBindings, text};
-            throw exc;
-        }
-    } else if (name && name.escapedText) {
-        // `import DefaultClass from './module';`
-        return 'const {default: ' + text + '}';
-    } else {
-        const exc = new Error('Unsupported importClause');
-        exc.data = {importClause, text};
-        throw exc;
-    }
-};
-
-/** @cudos to https://stackoverflow.com/a/30106551/2750743 */
-const b64EncodeUnicode = (str) => {
-    // first we use encodeURIComponent to get percent-encoded UTF-8,
-    // then we convert the percent encodings into raw bytes which
-    // can be fed into btoa.
-    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g,
-        function toSolidBytes(match, p1) {
-            return String.fromCharCode('0x' + p1);
-        }));
-};
 
 const tryLoadSideEffectsJsModule = (jsCode) => {
     try {
@@ -82,7 +42,6 @@ const tryLoadSideEffectsJsModule = (jsCode) => {
 };
 
 const CACHE_LOADED = 'ts-browser-loaded-modules';
-const explicitExtensions = ['ts', 'js', 'tsx', 'jsx'];
 let whenTypescriptServices = null;
 
 /** @return {Promise<ts>} */
@@ -115,58 +74,9 @@ const LoadRootModule = async ({
     compilerOptions = {},
 }) => {
     const ts = await getTs();
-    const targetLanguageVersion = compilerOptions.target || ts.ScriptTarget.ES2018;
+    compilerOptions.target = compilerOptions.target || ts.ScriptTarget.ES2018;
 
-    const fetchModuleData = url => {
-        // typescript does not allow specifying extension in the import, but react
-        // files may have .tsx extension rather than .ts, so have to check both
-        const urlOptions = [];
-        if (explicitExtensions.some(ext => url.endsWith('.' + ext))) {
-            urlOptions.push(url);
-        } else {
-            urlOptions.push(url + '.ts');
-            if (compilerOptions.jsx) {
-                urlOptions.push(url + '.tsx');
-            }
-        }
-        const whenResource = oneSuccess(urlOptions.map(fullUrl => fetch(fullUrl)
-            .then(rs => {
-                if (rs.status === 200) {
-                    return rs.text().then(tsCode => ({fullUrl, tsCode}));
-                } else {
-                    const msg = 'Failed to fetch module file ' + rs.status + ': ' + fullUrl;
-                    return Promise.reject(new Error(msg));
-                }
-            })));
-        return whenResource
-            .then(async ({fullUrl, tsCode}) => {
-                const extension = fullUrl.replace(/^.*\./, '');
-                const sourceFile = ts.createSourceFile(
-                    'ololo.' + extension, tsCode, targetLanguageVersion
-                );
-                let tsCodeAfterImports = '';
-                const dependencies = [];
-                for (const statement of sourceFile.statements) {
-                    const kindName = ts.SyntaxKind[statement.kind];
-                    if (kindName === 'ImportDeclaration') {
-                        const relPath = statement.moduleSpecifier.text;
-                        const {importClause = null} = statement;
-                        dependencies.push({
-                            url: addPathToUrl(relPath, url),
-                            // can be not set in case of side-effectish `import './some/url.css';`
-                            destrJsPart: importClause
-                                ? es6ToDestr(tsCode, importClause) : '',
-                        });
-                        // leaving a blank line so that stack trace matched original lines
-                        tsCodeAfterImports += '\n';
-                    } else {
-                        const {pos, end} = statement;
-                        tsCodeAfterImports += tsCode.slice(pos, end) + '\n';
-                    }
-                }
-                return {url, extension, dependencies, tsCodeAfterImports};
-            });
-    };
+    const fetchModuleData = url => FetchModuleData({ts, url, compilerOptions});
 
     const fetchDependencyFiles = async (entryUrls) => {
         const cachedFiles = {};
@@ -243,7 +153,7 @@ const LoadRootModule = async ({
             const isJsSrc = fileData.extension === 'js';
             let jsCode = isJsSrc ? tsCodeResult :
                 ts.transpile(tsCodeResult, {
-                    module: 5, target: targetLanguageVersion /* ES2018 */,
+                    module: 5,
                     ...compilerOptions,
                 });
             jsCode += '\n//# sourceURL=' + baseUrl;
