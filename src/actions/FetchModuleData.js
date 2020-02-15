@@ -84,9 +84,13 @@ const FetchModuleData = ({ts, url, compilerOptions}) => {
                         ts.SyntaxKind[(node.expression || {}).kind] === 'ImportKeyword' &&
                         (node.arguments || []).length === 1
                     ) {
+                        const baseUrl = url;
                         const ident = 'window[' + JSON.stringify(IMPORT_DYNAMIC) + ']';
                         // the leading space is important, cuz transpiler glues `await` to `window` otherwise
-                        const newCallCode = ' ' + ident + '(' + getNodeText(node.arguments[0]) + ')';
+                        const newCallCode = ' ' + ident + '(' +
+                            getNodeText(node.arguments[0]) + ', ' +
+                            JSON.stringify(baseUrl) +
+                        ')';
                         resultParts.push(newCallCode);
                         return;
                     }

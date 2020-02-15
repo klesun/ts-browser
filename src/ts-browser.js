@@ -1,6 +1,7 @@
 
 import {b64EncodeUnicode} from "./utils.js";
 import FetchModuleData, {CACHE_LOADED, IMPORT_DYNAMIC} from "./actions/FetchModuleData.js";
+import {addPathToUrl} from "./UrlPathResolver.js";
 
 /**
  * @module ts-browser - like ts-node, this tool allows you
@@ -162,7 +163,8 @@ const LoadRootModule = async ({
     };
 
     const main = async () => {
-        window[IMPORT_DYNAMIC] = async url => {
+        window[IMPORT_DYNAMIC] = async (relUrl, baseUrl) => {
+            const url = addPathToUrl(relUrl, baseUrl);
             if (!cachedFiles[url]) {
                 await fetchDependencyFiles([url]);
             }
