@@ -13,23 +13,50 @@ const workers = [...Array(NUM_OF_WORKERS).keys()].map(i => {
     worker.onmessage = ({data}) => {
         console.log('Received event from worker #' + i, data);
     };
+    let lastReferenceId = 0;
+    const referenceIdToCallback = new Map();
+    worker.onmessage = ({data}) => {
+        const {messageType, messageData, referenceId} = data;
+        const callback = referenceIdToCallback.get(referenceId);
+        if (callback) {
+            callback({messageType, messageData});
+        } else {
+            console.log('Unexpected message from worker #' + i, data);
+        }
+    };
     return {
-        parseTsModule: (params) => new Promise((ok, err) => {
+        parseTsModule: (params) => {
+            const referenceId = ++lastReferenceId;
             worker.postMessage({
                 messageType: 'parseTsModule',
                 messageData: params,
+                referenceId: referenceId,
             });
-            worker.onmessage = ({data}) => {
-                if (data.messageType === 'parseTsModule') {
-                    ok(data.messageData);
-                } else {
-                    const msg = 'Unexpected parseTsModule() worker response';
-                    const exc = new Error(msg);
-                    exc.data = data;
-                    err(exc);
-                }
-            };
-        }),
+            return new Promise((ok, err) => {
+                let reportJsCodeOk, reportJsCodeErr;
+                referenceIdToCallback.set(referenceId, ({messageType, messageData}) => {
+                    if (messageType === 'parseTsModule_deps') {
+                        const {isJsSrc, staticDependencies} = messageData;
+                        ok({
+                            isJsSrc, staticDependencies,
+                            whenJsCode: new Promise((ok, err) => {
+                                [reportJsCodeOk, reportJsCodeErr] = [ok, err];
+                            }),
+                        });
+                    } else if (messageType === 'parseTsModule_code') {
+                        reportJsCodeOk(messageData.jsCode);
+                        referenceIdToCallback.delete(referenceId);
+                    } else {
+                        const reject = reportJsCodeErr || err;
+                        const msg = 'Unexpected parseTsModule() worker response';
+                        const exc = new Error(msg);
+                        exc.data = {messageType, messageData};
+                        reject(exc);
+                        referenceIdToCallback.delete(referenceId);
+                    }
+                });
+            });
+        },
     };
 });
 
@@ -87,8 +114,8 @@ const WorkerManager = ({compilerOptions}) => {
     const parseInWorker = async ({url, fullUrl, tsCode}) => {
         return withFreeWorker(worker => worker.parseTsModule({
             fullUrl, tsCode, compilerOptions,
-        }).then(({isJsSrc, staticDependencies, jsCode}) => {
-            return {url, isJsSrc, staticDependencies, jsCode};
+        }).then(({isJsSrc, staticDependencies, whenJsCode}) => {
+            return {url, isJsSrc, staticDependencies, whenJsCode};
         }));
     };
 

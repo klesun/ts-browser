@@ -108,6 +108,7 @@ const loadModuleFromFiles = (baseUrl, cachedFiles) => {
             return Promise.resolve(window[CACHE_LOADED][baseUrl]);
         }
         const fileData = cachedFiles[baseUrl];
+        let jsCode = await fileData.whenJsCode;
         for (const dependency of fileData.staticDependencies) {
             const newUrl = dependency.url;
             if (!modulePromises[newUrl]) {
@@ -118,7 +119,7 @@ const loadModuleFromFiles = (baseUrl, cachedFiles) => {
                 load(newUrl).then(reportOk).catch(reportErr);
                 window[CACHE_LOADED][newUrl] = await modulePromises[newUrl];
             } else if (!window[CACHE_LOADED][newUrl]) {
-                if (fileData.jsCode.match(/(^|\s+)export\b/)) {
+                if (jsCode.match(/(^|\s+)export\b/)) {
                     // the check is to exclude type definition-only files, as they have no vars
                     const msg = 'warning: circular dependency on ' + baseUrl + ' -> ' +
                         newUrl + ', variables will be empty in module top-level scope';
@@ -127,7 +128,7 @@ const loadModuleFromFiles = (baseUrl, cachedFiles) => {
                 window[CACHE_LOADED][newUrl] = makeCircularRefProxy(modulePromises[newUrl], newUrl);
             }
         }
-        const jsCode = fileData.jsCode + '\n' +
+        jsCode = jsCode + '\n' +
             '//# sourceURL=' + baseUrl;
         const base64Code = b64EncodeUnicode(jsCode);
         if (fileData.isJsSrc) {

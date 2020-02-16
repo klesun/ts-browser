@@ -83,7 +83,9 @@ const transformStatement = ({statement, sourceFile, baseUrl, ts}) => {
  * @param {ts} ts
  * @param {ts.CompilerOptions} compilerOptions
  */
-org.klesun.tsBrowser.ParseTsModule_sideEffects = ({fullUrl, tsCode, compilerOptions, ts, addPathToUrl}) => {
+org.klesun.tsBrowser.ParseTsModule_sideEffects = ({
+    fullUrl, tsCode, compilerOptions, ts, addPathToUrl,
+}) => {
     const extension = fullUrl.replace(/^.*\./, '');
     const sourceFile = ts.createSourceFile(
         'ololo.' + extension, tsCode, compilerOptions.target
@@ -114,13 +116,14 @@ org.klesun.tsBrowser.ParseTsModule_sideEffects = ({fullUrl, tsCode, compilerOpti
         }
     }
     const isJsSrc = extension === 'js';
-    const jsCodeAfterImports = isJsSrc ? tsCodeAfterImports :
-        ts.transpile(tsCodeAfterImports, {
+    const getJsCodeAfterImports = () => isJsSrc
+        ? tsCodeAfterImports
+        : ts.transpile(tsCodeAfterImports, {
             module: 5, // es6 imports
             ...compilerOptions,
         });
-    const jsCode = jsCodeImports + jsCodeAfterImports;
+    const getJsCode = () => jsCodeImports + getJsCodeAfterImports();
 
-    return {isJsSrc, staticDependencies, jsCode};
+    return {isJsSrc, staticDependencies, getJsCode};
 };
 

@@ -11,14 +11,23 @@ const main = () => {
     const ts = self.ts;
 
     const onmessage = ({data}) => {
-        if (data.messageType === 'parseTsModule') {
-            const parsed = org.klesun.tsBrowser.ParseTsModule_sideEffects({
-                ...data.messageData, ts: ts,
-                addPathToUrl: org.klesun.tsBrowser.addPathToUrl,
-            });
+        const {messageType, messageData, referenceId} = data;
+        if (messageType === 'parseTsModule') {
+            const {isJsSrc, staticDependencies, getJsCode} =
+                org.klesun.tsBrowser.ParseTsModule_sideEffects({
+                    ...messageData, ts: ts,
+                    addPathToUrl: org.klesun.tsBrowser.addPathToUrl,
+                });
             self.postMessage({
-                messageType: 'parseTsModule',
-                messageData: parsed,
+                messageType: 'parseTsModule_deps',
+                messageData: {isJsSrc, staticDependencies},
+                referenceId: referenceId,
+            });
+            const jsCode = getJsCode();
+            self.postMessage({
+                messageType: 'parseTsModule_code',
+                messageData: {isJsSrc, staticDependencies, jsCode},
+                referenceId: referenceId,
             });
         }
     };
