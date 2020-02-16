@@ -1,5 +1,7 @@
 
-import {addPathToUrl} from "../UrlPathResolver.js";
+var org = org || {};
+org.klesun = org.klesun || {};
+org.klesun.tsBrowser = org.klesun.tsBrowser || {};
 
 /**
  * @param {ts.ImportClause} importClause - `{Field1, Field2}`
@@ -30,10 +32,12 @@ const es6ToDestr = (tsCode, importClause) => {
     }
 };
 
-export const CACHE_LOADED = 'ts-browser-loaded-modules';
-export const IMPORT_DYNAMIC = 'ts-browser-import-dynamic';
+const CACHE_LOADED = 'ts-browser-loaded-modules';
+const IMPORT_DYNAMIC = 'ts-browser-import-dynamic';
 
 const transformStatement = ({statement, sourceFile, baseUrl, ts}) => {
+    const dynamicDependencies = [];
+
     const getNodeText = node => {
         return node.getFullText(sourceFile);
     };
@@ -46,12 +50,22 @@ const transformStatement = ({statement, sourceFile, baseUrl, ts}) => {
             (node.arguments || []).length === 1
         ) {
             const ident = 'window[' + JSON.stringify(IMPORT_DYNAMIC) + ']';
+            const arg = node.arguments[0];
             // the leading space is important, cuz transpiler glues `await` to `window` otherwise
             const newCallCode = ' ' + ident + '(' +
-                getNodeText(node.arguments[0]) + ', ' +
+                getNodeText(arg) + ', ' +
                 JSON.stringify(baseUrl) +
-                ')';
+            ')';
             resultParts.push(newCallCode);
+            const url = ts.SyntaxKind[arg.kind] !== 'StringLiteral' ? null :
+                org.klesun.tsBrowser.addPathToUrl(arg.text, baseUrl);
+            dynamicDependencies.push({
+                url: url,
+                ...(url ? {} : {
+                    raw: getNodeText(arg),
+                    kind: ts.SyntaxKind[arg.kind],
+                }),
+            });
             return;
         }
         const childCount = node.getChildCount(sourceFile);
@@ -72,16 +86,26 @@ const transformStatement = ({statement, sourceFile, baseUrl, ts}) => {
             }
         }
     };
-    //resultParts.push(getNodeText(statement));
-    consumeAst(statement);
-    return resultParts.join('');
+    const nodeText = getNodeText(statement);
+    let tsCode;
+    // processing the syntax tree here is awfully slow - about
+    // same time as how long typescript takes to transpile it
+    if (nodeText.match(/\bimport\(/)) {
+        consumeAst(statement);
+        tsCode = resultParts.join('');
+    } else {
+        tsCode = nodeText;
+    }
+    return {tsCode, dynamicDependencies};
 };
 
 /**
  * @param {ts} ts
  * @param {ts.CompilerOptions} compilerOptions
  */
-const ParseTsModule = ({fullUrl, tsCode, compilerOptions, ts}) => {
+org.klesun.tsBrowser.ParseTsModule_sideEffects = ({
+    fullUrl, tsCode, compilerOptions, ts, addPathToUrl,
+}) => {
     const extension = fullUrl.replace(/^.*\./, '');
     const sourceFile = ts.createSourceFile(
         'ololo.' + extension, tsCode, compilerOptions.target
@@ -89,6 +113,7 @@ const ParseTsModule = ({fullUrl, tsCode, compilerOptions, ts}) => {
     let jsCodeImports = '';
     let tsCodeAfterImports = '';
     const staticDependencies = [];
+    const dynamicDependencies = [];
 
     for (const statement of sourceFile.statements) {
         const kindName = ts.SyntaxKind[statement.kind];
@@ -106,20 +131,25 @@ const ParseTsModule = ({fullUrl, tsCode, compilerOptions, ts}) => {
             }
             staticDependencies.push({url: depUrl});
         } else {
-            tsCodeAfterImports += transformStatement({
+            const transformed = transformStatement({
                 statement, baseUrl: fullUrl, sourceFile, ts,
-            }) + '\n';
+            });
+            dynamicDependencies.push(...transformed.dynamicDependencies);
+            tsCodeAfterImports += transformed.tsCode + '\n';
         }
     }
     const isJsSrc = extension === 'js';
-    const jsCodeAfterImports = isJsSrc ? tsCodeAfterImports :
-        ts.transpile(tsCodeAfterImports, {
+    const getJsCodeAfterImports = () => isJsSrc
+        ? tsCodeAfterImports
+        : ts.transpile(tsCodeAfterImports, {
             module: 5, // es6 imports
             ...compilerOptions,
         });
-    const jsCode = jsCodeImports + jsCodeAfterImports;
+    const getJsCode = () => {
+        const afterImports = getJsCodeAfterImports();
+        return jsCodeImports + afterImports;
+    };
 
-    return {isJsSrc, staticDependencies, jsCode};
+    return {isJsSrc, staticDependencies, dynamicDependencies, getJsCode};
 };
 
-export default ParseTsModule;

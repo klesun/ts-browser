@@ -1,8 +1,10 @@
 
 import {b64EncodeUnicode} from "./utils.js";
 import {addPathToUrl} from "./UrlPathResolver.js";
-import {CACHE_LOADED, IMPORT_DYNAMIC} from "./actions/ParseTsModule.js";
 import WorkerManager from "./WorkerManager.js";
+
+const CACHE_LOADED = 'ts-browser-loaded-modules';
+const IMPORT_DYNAMIC = 'ts-browser-import-dynamic';
 
 /**
  * @module ts-browser - like ts-node, this tool allows you
@@ -106,6 +108,7 @@ const loadModuleFromFiles = (baseUrl, cachedFiles) => {
             return Promise.resolve(window[CACHE_LOADED][baseUrl]);
         }
         const fileData = cachedFiles[baseUrl];
+        let jsCode = await fileData.whenJsCode;
         for (const dependency of fileData.staticDependencies) {
             const newUrl = dependency.url;
             if (!modulePromises[newUrl]) {
@@ -116,7 +119,7 @@ const loadModuleFromFiles = (baseUrl, cachedFiles) => {
                 load(newUrl).then(reportOk).catch(reportErr);
                 window[CACHE_LOADED][newUrl] = await modulePromises[newUrl];
             } else if (!window[CACHE_LOADED][newUrl]) {
-                if (fileData.jsCode.match(/(^|\s+)export\b/)) {
+                if (jsCode.match(/(^|\s+)export\b/)) {
                     // the check is to exclude type definition-only files, as they have no vars
                     const msg = 'warning: circular dependency on ' + baseUrl + ' -> ' +
                         newUrl + ', variables will be empty in module top-level scope';
@@ -125,7 +128,7 @@ const loadModuleFromFiles = (baseUrl, cachedFiles) => {
                 window[CACHE_LOADED][newUrl] = makeCircularRefProxy(modulePromises[newUrl], newUrl);
             }
         }
-        const jsCode = fileData.jsCode + '\n' +
+        jsCode = jsCode + '\n' +
             '//# sourceURL=' + baseUrl;
         const base64Code = b64EncodeUnicode(jsCode);
         if (fileData.isJsSrc) {
@@ -177,6 +180,14 @@ const LoadRootModule = async ({
             for (const {url} of next.staticDependencies) {
                 if (!urlToPromise[url] && !cachedFiles[url]) {
                     urlToPromise[url] = getFileData(url);
+                }
+            }
+            for (const dep of next.dynamicDependencies) {
+                if (dep.url) {
+                    if (!cachedFiles[dep.url]) {
+                        // preloaded dynamic dependency files for optimization
+                        fetchDependencyFiles([dep.url]);
+                    }
                 }
             }
         }
