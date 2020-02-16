@@ -1,4 +1,3 @@
-//import ParseTsModule from "./actions/ParseTsModule.js";
 
 const main = () => {
     self.importScripts(

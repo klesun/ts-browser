@@ -2,74 +2,18 @@
 import {b64EncodeUnicode} from "./utils.js";
 import {addPathToUrl} from "./UrlPathResolver.js";
 import WorkerManager from "./WorkerManager.js";
+import typescriptServices from "./cdnEs6Wrappers/typescriptServices.js";
+import {tryEvalLegacyJsModule} from "./sideEffectModules/sideEffectUtils.js";
 
 const CACHE_LOADED = 'ts-browser-loaded-modules';
 const IMPORT_DYNAMIC = 'ts-browser-import-dynamic';
+
+const whenTs = typescriptServices.get();
 
 /**
  * @module ts-browser - like ts-node, this tool allows you
  * to require typescript files and compiles then on the fly
  */
-
-const tryLoadSideEffectsJsModule = (jsCode) => {
-    try {
-        // trying to support non es6 modules
-        const globalsBefore = new Set(Object.keys(window));
-        const self = {};
-        const evalResult = eval.apply(self, [jsCode]);
-        const newGlobals = Object.keys(window)
-            .filter(k => !globalsBefore.has(k));
-        const result = {};
-        for (const name of newGlobals) {
-            result[name] = window[name];
-        }
-        if (new Set(newGlobals.map(g => window[g])).size === 1) {
-            result['default'] = window[newGlobals[0]];
-        }
-        const name = jsCode.slice(-100).replace(/[\s\S]*\//, '');
-        console.debug('side-effects js lib loaded ' + name, {
-            newGlobals, evalResult, self,
-        });
-        if (newGlobals.length === 0) {
-            const msg = 'warning: imported lib ' + name + ' did not add any keys to window. ' +
-                'If it is imported in both html and js, you can only use it with side-effects ' +
-                'import like `import "someLib.js"; const someLib = window.someLib;`';
-            console.warn(msg);
-            return {warning: msg};
-        } else {
-            return result;
-        }
-    } catch (exc) {
-        // Unexpected token 'import/export' - means it is a es6 module
-        return null;
-    }
-};
-
-let whenTypescriptServices = null;
-
-/** @return {Promise<ts>} */
-const getTs = () => {
-    if (!whenTypescriptServices) {
-        if (window.ts) {
-            whenTypescriptServices = Promise.resolve(window.ts);
-        } else {
-            // kind of lame that typescript does not provide it's own CDN
-            const url = 'https://klesun-misc.github.io/TypeScript/lib/typescriptServices.js';
-            whenTypescriptServices = fetch(url)
-                .then(rs => rs.text())
-                .then(jsCode => {
-                    jsCode += '\nwindow.ts = ts;';
-                    jsCode += '\n//# sourceURL=' + url;
-                    if (tryLoadSideEffectsJsModule(jsCode)) {
-                        return Promise.resolve(window.ts);
-                    } else {
-                        return Promise.reject(new Error('Failed to load typescriptServices.js'));
-                    }
-                });
-        }
-    }
-    return whenTypescriptServices;
-};
 
 const makeCircularRefProxy = (whenModule, newUrl) => {
     // from position of an app writer, it would be better to just not use circular
@@ -132,7 +76,7 @@ const loadModuleFromFiles = (baseUrl, cachedFiles) => {
             '//# sourceURL=' + baseUrl;
         const base64Code = b64EncodeUnicode(jsCode);
         if (fileData.isJsSrc) {
-            const loaded = tryLoadSideEffectsJsModule(jsCode);
+            const loaded = tryEvalLegacyJsModule(jsCode);
             if (loaded) {
                 // only side effect imports supported, as binding
                 // AMD/CJS modules with es6 has some problems
@@ -150,9 +94,9 @@ const LoadRootModule = async ({
     rootModuleUrl,
     compilerOptions = {},
 }) => {
-    const ts = await getTs();
+    const ts = await whenTs;
     compilerOptions.target = compilerOptions.target || ts.ScriptTarget.ES2018;
-    const workerManager = WorkerManager({ts, compilerOptions});
+    const workerManager = WorkerManager({compilerOptions});
 
     const cachedFiles = {};
     const urlToWhenFileData = {};
@@ -195,9 +139,15 @@ const LoadRootModule = async ({
     };
 
     const importDynamic = async (relUrl, baseUrl) => {
-        const url = addPathToUrl(relUrl, baseUrl);
-        await fetchDependencyFiles([url]);
-        return loadModuleFromFiles(url, cachedFiles);
+        try {
+            const url = addPathToUrl(relUrl, baseUrl);
+            await fetchDependencyFiles([url]);
+            return await loadModuleFromFiles(url, cachedFiles);
+        } catch (exc) {
+            console.warn('Resetting transpilation cache due to uncaught error');
+            WorkerManager.resetCache();
+            throw exc;
+        }
     };
 
     const main = async () => {
