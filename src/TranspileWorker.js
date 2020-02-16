@@ -10,7 +10,8 @@ const main = () => {
     /** @type {ts} */
     const ts = self.ts;
 
-    const onmessage = ({data}) => {
+    const onmessage = (evt) => {
+        const {data} = evt;
         const {messageType, messageData, referenceId} = data;
         if (messageType === 'parseTsModule') {
             const {isJsSrc, staticDependencies, dynamicDependencies, getJsCode} =

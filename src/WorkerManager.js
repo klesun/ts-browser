@@ -4,7 +4,8 @@ import {addPathToUrl} from "./UrlPathResolver.js";
 
 const EXPLICIT_EXTENSIONS = ['ts', 'js', 'tsx', 'jsx'];
 
-const NUM_OF_WORKERS = 2;
+// on my 4-core PC 3 workers seems to be the optimal solution
+const NUM_OF_WORKERS = 3;
 
 const workers = [...Array(NUM_OF_WORKERS).keys()].map(i => {
     const scriptUrl = import.meta.url;
@@ -21,10 +22,12 @@ const workers = [...Array(NUM_OF_WORKERS).keys()].map(i => {
         if (callback) {
             callback({messageType, messageData});
         } else {
-            console.log('Unexpected message from worker #' + i, data);
+            console.debug('Unexpected message from worker #' + i, data);
         }
     };
+    let whenFree = Promise.resolve();
     return {
+        getWhenFree: () => whenFree,
         parseTsModule: (params) => {
             const referenceId = ++lastReferenceId;
             worker.postMessage({
@@ -37,11 +40,13 @@ const workers = [...Array(NUM_OF_WORKERS).keys()].map(i => {
                 referenceIdToCallback.set(referenceId, ({messageType, messageData}) => {
                     if (messageType === 'parseTsModule_deps') {
                         const {isJsSrc, staticDependencies, dynamicDependencies} = messageData;
+                        const whenJsCode = new Promise((ok, err) => {
+                            [reportJsCodeOk, reportJsCodeErr] = [ok, err];
+                        });
+                        whenFree = whenJsCode;
                         ok({
-                            isJsSrc, staticDependencies, dynamicDependencies,
-                            whenJsCode: new Promise((ok, err) => {
-                                [reportJsCodeOk, reportJsCodeErr] = [ok, err];
-                            }),
+                            isJsSrc, staticDependencies,
+                            dynamicDependencies, whenJsCode,
                         });
                     } else if (messageType === 'parseTsModule_code') {
                         reportJsCodeOk(messageData.jsCode);
@@ -76,7 +81,8 @@ const withFreeWorker = (action) => new Promise((ok, err) => {
             const worker = [...freeWorkers][0];
             freeWorkers.delete(worker);
             const callback = workerCallbackQueue.shift();
-            callback(worker).finally(() => {
+            callback(worker).finally(async () => {
+                await worker.getWhenFree().catch(exc => {});
                 freeWorkers.add(worker);
                 checkFree();
             });

@@ -86,9 +86,16 @@ const transformStatement = ({statement, sourceFile, baseUrl, ts}) => {
             }
         }
     };
-    //resultParts.push(getNodeText(statement));
-    consumeAst(statement);
-    const tsCode = resultParts.join('');
+    const nodeText = getNodeText(statement);
+    let tsCode;
+    // processing the syntax tree here is awfully slow - about
+    // same time as how long typescript takes to transpile it
+    if (nodeText.match(/\bimport\(/)) {
+        consumeAst(statement);
+        tsCode = resultParts.join('');
+    } else {
+        tsCode = nodeText;
+    }
     return {tsCode, dynamicDependencies};
 };
 
@@ -138,7 +145,10 @@ org.klesun.tsBrowser.ParseTsModule_sideEffects = ({
             module: 5, // es6 imports
             ...compilerOptions,
         });
-    const getJsCode = () => jsCodeImports + getJsCodeAfterImports();
+    const getJsCode = () => {
+        const afterImports = getJsCodeAfterImports();
+        return jsCodeImports + afterImports;
+    };
 
     return {isJsSrc, staticDependencies, dynamicDependencies, getJsCode};
 };
