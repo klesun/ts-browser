@@ -1,5 +1,7 @@
 
-import {addPathToUrl} from "../UrlPathResolver.js";
+var org = org || {};
+org.klesun = org.klesun || {};
+org.klesun.tsBrowser = org.klesun.tsBrowser || {};
 
 /**
  * @param {ts.ImportClause} importClause - `{Field1, Field2}`
@@ -30,8 +32,8 @@ const es6ToDestr = (tsCode, importClause) => {
     }
 };
 
-export const CACHE_LOADED = 'ts-browser-loaded-modules';
-export const IMPORT_DYNAMIC = 'ts-browser-import-dynamic';
+const CACHE_LOADED = 'ts-browser-loaded-modules';
+const IMPORT_DYNAMIC = 'ts-browser-import-dynamic';
 
 const transformStatement = ({statement, sourceFile, baseUrl, ts}) => {
     const getNodeText = node => {
@@ -81,7 +83,7 @@ const transformStatement = ({statement, sourceFile, baseUrl, ts}) => {
  * @param {ts} ts
  * @param {ts.CompilerOptions} compilerOptions
  */
-const ParseTsModule = ({fullUrl, tsCode, compilerOptions, ts}) => {
+org.klesun.tsBrowser.ParseTsModule_sideEffects = ({fullUrl, tsCode, compilerOptions, ts, addPathToUrl}) => {
     const extension = fullUrl.replace(/^.*\./, '');
     const sourceFile = ts.createSourceFile(
         'ololo.' + extension, tsCode, compilerOptions.target
@@ -122,4 +124,3 @@ const ParseTsModule = ({fullUrl, tsCode, compilerOptions, ts}) => {
     return {isJsSrc, staticDependencies, jsCode};
 };
 
-export default ParseTsModule;

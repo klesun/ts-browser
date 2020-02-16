@@ -1,8 +1,10 @@
 
 import {b64EncodeUnicode} from "./utils.js";
 import {addPathToUrl} from "./UrlPathResolver.js";
-import {CACHE_LOADED, IMPORT_DYNAMIC} from "./actions/ParseTsModule.js";
 import WorkerManager from "./WorkerManager.js";
+
+const CACHE_LOADED = 'ts-browser-loaded-modules';
+const IMPORT_DYNAMIC = 'ts-browser-import-dynamic';
 
 /**
  * @module ts-browser - like ts-node, this tool allows you
