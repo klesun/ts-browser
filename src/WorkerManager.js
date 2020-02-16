@@ -9,8 +9,16 @@ const NUM_OF_WORKERS = 3;
 
 const workers = [...Array(NUM_OF_WORKERS).keys()].map(i => {
     const scriptUrl = import.meta.url;
+
     const workerUrl = addPathToUrl('./TranspileWorker.js', scriptUrl);
-    const worker = new Worker(workerUrl);
+    // fuck you CORS
+    //const workerJsCode = fetch(workerUrl).then(rs => rs.text());
+    const workerBlob = new Blob([
+        'importScripts(' + JSON.stringify(workerUrl) + ')',
+    ], {type: 'application/javascript'});
+    const blobUrl = window.URL.createObjectURL(workerBlob);
+
+    const worker = new Worker(blobUrl);
     worker.onmessage = ({data}) => {
         console.log('Received event from worker #' + i, data);
     };
@@ -118,11 +126,12 @@ const WorkerManager = ({compilerOptions}) => {
     };
 
     const parseInWorker = async ({url, fullUrl, tsCode}) => {
-        return withFreeWorker(worker => worker.parseTsModule({
+        const action = () => withFreeWorker(worker => worker.parseTsModule({
             fullUrl, tsCode, compilerOptions,
         }).then(({isJsSrc, staticDependencies, dynamicDependencies, whenJsCode}) => {
             return {url, isJsSrc, staticDependencies, dynamicDependencies, whenJsCode};
         }));
+        return action();
     };
 
     return {
