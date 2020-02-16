@@ -1,6 +1,8 @@
 import {oneSuccess} from "./utils.js";
 import {addPathToUrl} from "./UrlPathResolver.js";
+import blueimpMd5 from "./cdnEs6Wrappers/blueimpMd5.js";
 
+const whenMd5 = blueimpMd5.get();
 
 const EXPLICIT_EXTENSIONS = ['ts', 'js', 'tsx', 'jsx'];
 
@@ -12,7 +14,6 @@ const workers = [...Array(NUM_OF_WORKERS).keys()].map(i => {
 
     const workerUrl = addPathToUrl('./TranspileWorker.js', scriptUrl);
     // fuck you CORS
-    //const workerJsCode = fetch(workerUrl).then(rs => rs.text());
     const workerBlob = new Blob([
         'importScripts(' + JSON.stringify(workerUrl) + ')',
     ], {type: 'application/javascript'});
@@ -99,6 +100,43 @@ const withFreeWorker = (action) => new Promise((ok, err) => {
     checkFree();
 });
 
+const CACHE_PREFIX = 'ts-browser-cache:';
+
+const resetCache = () => {
+    for (const key of Object.keys(window.localStorage)) {
+        if (key.startsWith(CACHE_PREFIX)) {
+            window.localStorage.removeItem(key);
+        }
+    }
+};
+
+const getFromCache = ({fullUrl, checksum}) => {
+    const absUrl = addPathToUrl(fullUrl, window.location.pathname);
+    const cacheKey = CACHE_PREFIX + absUrl;
+    const oldResultStr = window.localStorage.getItem(cacheKey);
+    let oldResult = null;
+    try {
+        oldResult = JSON.parse(oldResultStr || 'null');
+    } catch (exc) {
+        console.warn('Failed to parse cached ' + fullUrl, exc);
+    }
+
+    if (oldResult && oldResult.checksum === checksum) {
+        const {jsCode, ...rs} = oldResult.value;
+        return {...rs, whenJsCode: Promise.resolve(jsCode)};
+    } else {
+        return null;
+    }
+};
+
+const putToCache = ({fullUrl, checksum, jsCode, ...rs}) => {
+    const absUrl = addPathToUrl(fullUrl, window.location.pathname);
+    const cacheKey = CACHE_PREFIX + absUrl;
+    window.localStorage.setItem(cacheKey, JSON.stringify({
+        checksum, value: {...rs, jsCode},
+    }));
+};
+
 const WorkerManager = ({compilerOptions}) => {
     const fetchModuleSrc = (url) => {
         // typescript does not allow specifying extension in the import, but react
@@ -126,12 +164,26 @@ const WorkerManager = ({compilerOptions}) => {
     };
 
     const parseInWorker = async ({url, fullUrl, tsCode}) => {
-        const action = () => withFreeWorker(worker => worker.parseTsModule({
-            fullUrl, tsCode, compilerOptions,
-        }).then(({isJsSrc, staticDependencies, dynamicDependencies, whenJsCode}) => {
-            return {url, isJsSrc, staticDependencies, dynamicDependencies, whenJsCode};
-        }));
-        return action();
+        const md5 = await whenMd5;
+        const checksum = md5(tsCode);
+        const fromCache = getFromCache({fullUrl, checksum});
+        if (fromCache) {
+            return fromCache;
+        } else {
+            return withFreeWorker(worker => worker.parseTsModule({
+                fullUrl, tsCode, compilerOptions,
+            }).then(({isJsSrc, staticDependencies, dynamicDependencies, whenJsCode}) => {
+                return {url, isJsSrc, staticDependencies, dynamicDependencies, whenJsCode};
+            })).then(({whenJsCode, ...rs}) => {
+                if (fullUrl.endsWith('.ts') || fullUrl.endsWith('.tsx')) {
+                    // no caching for large raw js libs
+                    whenJsCode.then(jsCode => {
+                        putToCache({...rs, fullUrl, checksum, jsCode});
+                    });
+                }
+                return {...rs, whenJsCode};
+            });
+        }
     };
 
     return {
@@ -139,5 +191,7 @@ const WorkerManager = ({compilerOptions}) => {
             .then(({fullUrl, tsCode}) => parseInWorker({url, fullUrl, tsCode})),
     };
 };
+
+WorkerManager.resetCache = resetCache;
 
 export default WorkerManager;
