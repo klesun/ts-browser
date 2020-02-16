@@ -36,6 +36,8 @@ const CACHE_LOADED = 'ts-browser-loaded-modules';
 const IMPORT_DYNAMIC = 'ts-browser-import-dynamic';
 
 const transformStatement = ({statement, sourceFile, baseUrl, ts}) => {
+    const dynamicDependencies = [];
+
     const getNodeText = node => {
         return node.getFullText(sourceFile);
     };
@@ -48,12 +50,22 @@ const transformStatement = ({statement, sourceFile, baseUrl, ts}) => {
             (node.arguments || []).length === 1
         ) {
             const ident = 'window[' + JSON.stringify(IMPORT_DYNAMIC) + ']';
+            const arg = node.arguments[0];
             // the leading space is important, cuz transpiler glues `await` to `window` otherwise
             const newCallCode = ' ' + ident + '(' +
-                getNodeText(node.arguments[0]) + ', ' +
+                getNodeText(arg) + ', ' +
                 JSON.stringify(baseUrl) +
-                ')';
+            ')';
             resultParts.push(newCallCode);
+            const url = ts.SyntaxKind[arg.kind] !== 'StringLiteral' ? null :
+                org.klesun.tsBrowser.addPathToUrl(arg.text, baseUrl);
+            dynamicDependencies.push({
+                url: url,
+                ...(url ? {} : {
+                    raw: getNodeText(arg),
+                    kind: ts.SyntaxKind[arg.kind],
+                }),
+            });
             return;
         }
         const childCount = node.getChildCount(sourceFile);
@@ -76,7 +88,8 @@ const transformStatement = ({statement, sourceFile, baseUrl, ts}) => {
     };
     //resultParts.push(getNodeText(statement));
     consumeAst(statement);
-    return resultParts.join('');
+    const tsCode = resultParts.join('');
+    return {tsCode, dynamicDependencies};
 };
 
 /**
@@ -93,6 +106,7 @@ org.klesun.tsBrowser.ParseTsModule_sideEffects = ({
     let jsCodeImports = '';
     let tsCodeAfterImports = '';
     const staticDependencies = [];
+    const dynamicDependencies = [];
 
     for (const statement of sourceFile.statements) {
         const kindName = ts.SyntaxKind[statement.kind];
@@ -110,9 +124,11 @@ org.klesun.tsBrowser.ParseTsModule_sideEffects = ({
             }
             staticDependencies.push({url: depUrl});
         } else {
-            tsCodeAfterImports += transformStatement({
+            const transformed = transformStatement({
                 statement, baseUrl: fullUrl, sourceFile, ts,
-            }) + '\n';
+            });
+            dynamicDependencies.push(...transformed.dynamicDependencies);
+            tsCodeAfterImports += transformed.tsCode + '\n';
         }
     }
     const isJsSrc = extension === 'js';
@@ -124,6 +140,6 @@ org.klesun.tsBrowser.ParseTsModule_sideEffects = ({
         });
     const getJsCode = () => jsCodeImports + getJsCodeAfterImports();
 
-    return {isJsSrc, staticDependencies, getJsCode};
+    return {isJsSrc, staticDependencies, dynamicDependencies, getJsCode};
 };
 

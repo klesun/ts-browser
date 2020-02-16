@@ -13,20 +13,20 @@ const main = () => {
     const onmessage = ({data}) => {
         const {messageType, messageData, referenceId} = data;
         if (messageType === 'parseTsModule') {
-            const {isJsSrc, staticDependencies, getJsCode} =
+            const {isJsSrc, staticDependencies, dynamicDependencies, getJsCode} =
                 org.klesun.tsBrowser.ParseTsModule_sideEffects({
                     ...messageData, ts: ts,
                     addPathToUrl: org.klesun.tsBrowser.addPathToUrl,
                 });
             self.postMessage({
                 messageType: 'parseTsModule_deps',
-                messageData: {isJsSrc, staticDependencies},
+                messageData: {isJsSrc, staticDependencies, dynamicDependencies},
                 referenceId: referenceId,
             });
             const jsCode = getJsCode();
             self.postMessage({
                 messageType: 'parseTsModule_code',
-                messageData: {isJsSrc, staticDependencies, jsCode},
+                messageData: {jsCode},
                 referenceId: referenceId,
             });
         }

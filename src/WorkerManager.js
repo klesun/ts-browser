@@ -36,9 +36,9 @@ const workers = [...Array(NUM_OF_WORKERS).keys()].map(i => {
                 let reportJsCodeOk, reportJsCodeErr;
                 referenceIdToCallback.set(referenceId, ({messageType, messageData}) => {
                     if (messageType === 'parseTsModule_deps') {
-                        const {isJsSrc, staticDependencies} = messageData;
+                        const {isJsSrc, staticDependencies, dynamicDependencies} = messageData;
                         ok({
-                            isJsSrc, staticDependencies,
+                            isJsSrc, staticDependencies, dynamicDependencies,
                             whenJsCode: new Promise((ok, err) => {
                                 [reportJsCodeOk, reportJsCodeErr] = [ok, err];
                             }),
@@ -114,8 +114,8 @@ const WorkerManager = ({compilerOptions}) => {
     const parseInWorker = async ({url, fullUrl, tsCode}) => {
         return withFreeWorker(worker => worker.parseTsModule({
             fullUrl, tsCode, compilerOptions,
-        }).then(({isJsSrc, staticDependencies, whenJsCode}) => {
-            return {url, isJsSrc, staticDependencies, whenJsCode};
+        }).then(({isJsSrc, staticDependencies, dynamicDependencies, whenJsCode}) => {
+            return {url, isJsSrc, staticDependencies, dynamicDependencies, whenJsCode};
         }));
     };
 

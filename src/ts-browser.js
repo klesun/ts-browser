@@ -182,6 +182,14 @@ const LoadRootModule = async ({
                     urlToPromise[url] = getFileData(url);
                 }
             }
+            for (const dep of next.dynamicDependencies) {
+                if (dep.url) {
+                    if (!cachedFiles[dep.url]) {
+                        // preloaded dynamic dependency files for optimization
+                        fetchDependencyFiles([dep.url]);
+                    }
+                }
+            }
         }
         return cachedFiles;
     };
