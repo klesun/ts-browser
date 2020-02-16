@@ -103,10 +103,8 @@ const withFreeWorker = (action) => new Promise((ok, err) => {
 const CACHE_PREFIX = 'ts-browser-cache:';
 
 const resetCache = () => {
-    console.log('ololo resetting cache');
     for (const key of Object.keys(window.localStorage)) {
         if (key.startsWith(CACHE_PREFIX)) {
-            console.log('removing key ' + key);
             window.localStorage.removeItem(key);
         }
     }

@@ -107,16 +107,16 @@ const LoadRootModule = async ({
         return urlToWhenFileData[url];
     };
 
-    const fetchDependencyFiles = async (entryUrls) => {
+    const dynamicImportUrls = new Set();
+    const fetchDependencyFiles = async (entryUrl) => {
+        dynamicImportUrls.add(entryUrl);
         const urlToPromise = {};
-        for (const entryUrl of entryUrls) {
-            urlToPromise[entryUrl] = getFileData(entryUrl);
-        }
+        urlToPromise[entryUrl] = getFileData(entryUrl);
         let promises;
-        let safeguard = 100000;
+        let safeguard = 10000;
         while ((promises = Object.values(urlToPromise)).length > 0) {
             if (--safeguard <= 0) {
-                throw new Error('Got into infinite loop while fetching dependencies of ' + entryUrls);
+                throw new Error('Got into infinite loop while fetching dependencies of ' + entryUrl);
             }
             const next = await Promise.race(promises);
             cachedFiles[next.url] = next;
@@ -128,9 +128,9 @@ const LoadRootModule = async ({
             }
             for (const dep of next.dynamicDependencies) {
                 if (dep.url) {
-                    if (!cachedFiles[dep.url]) {
-                        // preloaded dynamic dependency files for optimization
-                        fetchDependencyFiles([dep.url]);
+                    if (!cachedFiles[dep.url] && !dynamicImportUrls.has(dep.url)) {
+                        // preload dynamic dependency files for optimization
+                        fetchDependencyFiles(dep.url);
                     }
                 }
             }
@@ -141,7 +141,7 @@ const LoadRootModule = async ({
     const importDynamic = async (relUrl, baseUrl) => {
         try {
             const url = addPathToUrl(relUrl, baseUrl);
-            await fetchDependencyFiles([url]);
+            await fetchDependencyFiles(url);
             return await loadModuleFromFiles(url, cachedFiles);
         } catch (exc) {
             console.warn('Resetting transpilation cache due to uncaught error');
