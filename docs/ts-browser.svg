@@ -11,15 +11,16 @@
    inkscape:version="1.0rc1 (09960d6f05, 2020-04-09)"
    id="svg8"
    version="1.1"
-   viewBox="0 0 67.733332 67.733335"
-   height="256"
-   width="256">
+   viewBox="0 0 8.4666665 8.4666665"
+   height="32"
+   width="32">
   <defs
      id="defs2">
     <clipPath
        id="clipPath3729"
        clipPathUnits="userSpaceOnUse">
       <path
+         inkscape:connector-curvature="0"
          id="path3727"
          d="M 0,600 H 600 V 0 H 0 Z" />
     </clipPath>
@@ -27,8 +28,9 @@
        clipPathUnits="userSpaceOnUse"
        id="clipPath6055">
       <path
+         inkscape:connector-curvature="0"
          id="path6057"
-         style="display:inline;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:2.54459572"
+         style="display:inline;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:2.5446"
          d="m 504.16311,-311.25446 -106.92391,61.71663 c -4.00011,2.30541 -6.46073,6.57015 -6.46073,11.1835 v 0 123.53504 c 0,4.61589 2.46062,8.87809 6.45564,11.18858 v 0 l 106.92391,61.767519 c 3.99756,2.307948 8.92389,2.307948 12.924,0 v 0 l 106.94682,-61.767519 c 3.99756,-2.31049 6.45818,-6.57269 6.45818,-11.18858 v 0 -123.52995 c 0,-4.61844 -2.46062,-8.88318 -6.46073,-11.18859 v 0 l -106.94936,-61.71663 c -1.9975,-1.15524 -4.22657,-1.73032 -6.45818,-1.73032 v 0 c -2.22906,0 -4.46068,0.57508 -6.45564,1.73032"
          clip-path="none" />
     </clipPath>
@@ -45,9 +47,9 @@
      inkscape:document-rotation="0"
      inkscape:current-layer="layer1"
      inkscape:document-units="mm"
-     inkscape:cy="92.099017"
-     inkscape:cx="149.04194"
-     inkscape:zoom="1.979899"
+     inkscape:cy="18.595969"
+     inkscape:cx="17.535049"
+     inkscape:zoom="22.4"
      inkscape:pageshadow="2"
      inkscape:pageopacity="0.0"
      borderopacity="1.0"
@@ -71,7 +73,7 @@
      inkscape:groupmode="layer"
      inkscape:label="Layer 1">
     <g
-       transform="matrix(1.192188,0,0,1.192188,-12.76445,-12.944231)"
+       transform="matrix(0.14891067,0,0,0.14891067,-1.4512129,-1.6147799)"
        id="g930">
       <circle
          style="fill:#4581d2;fill-opacity:1;fill-rule:evenodd;stroke-width:0.264583"
@@ -107,7 +109,7 @@
          r="10.824416" />
     </g>
     <g
-       transform="matrix(0.45044116,0,0,0.45044116,-13.11882,-2.6766447)"
+       transform="matrix(0.0577331,0,0,0.0577331,-1.6563395,-0.34171052)"
        id="g88">
       <g
          style="display:inline"
