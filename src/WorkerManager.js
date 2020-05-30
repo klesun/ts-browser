@@ -168,18 +168,20 @@ const WorkerManager = ({compilerOptions}) => {
         const checksum = md5(tsCode);
         const fromCache = getFromCache({fullUrl, checksum});
         if (fromCache) {
-            return fromCache;
+            // ensure `url` won't be taken from cache, as it
+            // is often used as key without extension outside
+            return {...fromCache, url};
         } else {
             return withFreeWorker(worker => worker.parseTsModule({
                 fullUrl, tsCode, compilerOptions,
-            }).then(({isJsSrc, staticDependencies, dynamicDependencies, whenJsCode}) => {
-                return {url, isJsSrc, staticDependencies, dynamicDependencies, whenJsCode};
-            })).then(({whenJsCode, ...rs}) => {
+            })).then(({whenJsCode, ...importData}) => {
+                const rs = {url, ...importData};
                 if (fullUrl.endsWith('.ts') || fullUrl.endsWith('.tsx')) {
-                    // no caching for large raw js libs
                     whenJsCode.then(jsCode => {
                         putToCache({...rs, fullUrl, checksum, jsCode});
                     });
+                } else {
+                    // no caching for large raw js libs
                 }
                 return {...rs, whenJsCode};
             });
