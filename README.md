@@ -40,4 +40,4 @@ npm install ts-browser-klesun
 ```javascript
 import {loadModule} from './node_modules/ts-browser-klesun/src/ts-browser.js';
 ```
-(it's called [`ts-browser-klesun`](https://www.npmjs.com/package/ts-browser-klesun) in npm, don't confuse with [ts-browser](https://www.npmjs.com/package/ts-browser) which does a similar job, but by listing dependencies in the html file, not with `import`-s)
+(it's called [`ts-browser-klesun`](https://www.npmjs.com/package/ts-browser-klesun) in npm, don't confuse with [`ts-browser`](https://www.npmjs.com/package/ts-browser) which does a similar job, but by listing dependencies in the html file, not with `import`-s)
