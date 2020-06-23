@@ -1,0 +1,10 @@
+{
+  "name": "ts-browser-klesun",
+  "version": "0.0.1",
+  "description": "Run typescript files on the fly with dependencies. Like ts-node, but for browser.",
+  "keywords": ["typescript", "browser", "real-time", "interpreter", "imports", "webpackmustdie"],
+  "author": "klesun",
+  "license": "ISC",
+  "dependencies": {},
+  "devDependencies": {}
+}
