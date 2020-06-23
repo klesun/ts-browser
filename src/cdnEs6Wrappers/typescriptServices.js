@@ -8,8 +8,8 @@ const get = () => {
         if (window.ts) {
             whenLib = Promise.resolve(window.ts);
         } else {
-            // kind of lame that typescript does not provide it's own CDN
-            const url = 'https://klesun-misc.github.io/TypeScript/lib/typescriptServices.js';
+            //const url = 'https://klesun-misc.github.io/TypeScript/lib/typescriptServices.js';
+            const url = 'https://unpkg.com/typescript@latest/lib/typescriptServices.js';
             whenLib = fetch(url)
                 .then(rs => rs.text())
                 .then(jsCode => {
@@ -17,7 +17,7 @@ const get = () => {
                     jsCode += '\n//# sourceURL=' + url;
                     const module = tryEvalLegacyJsModule(jsCode, false);
                     if (module) {
-                        return module.default;
+                        return module.ts;
                     } else {
                         return Promise.reject(new Error('Failed to load ' + url));
                     }

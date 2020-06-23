@@ -6,7 +6,7 @@ const workerPath = workerUrl.replace(/\/[^/]+$/, '/');
 
 const main = () => {
     self.importScripts(
-        'https://klesun-misc.github.io/TypeScript/lib/typescriptServices.js',
+        'https://unpkg.com/typescript@latest/lib/typescriptServices.js',
         workerPath + '/UrlPathResolver_sideEffects.js',
         workerPath + '/actions/ParseTsModule_sideEffects.js'
     );
