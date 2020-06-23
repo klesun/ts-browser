@@ -1,14 +1,12 @@
 
+import "./vendor/typescript/typescriptServices.js";
 import {b64EncodeUnicode} from "./utils.js";
 import {addPathToUrl} from "./UrlPathResolver.js";
 import WorkerManager from "./WorkerManager.js";
-import typescriptServices from "./cdnEs6Wrappers/typescriptServices.js";
 import {tryEvalLegacyJsModule} from "./sideEffectModules/sideEffectUtils.js";
 
 const CACHE_LOADED = 'ts-browser-loaded-modules';
 const IMPORT_DYNAMIC = 'ts-browser-import-dynamic';
-
-const whenTs = typescriptServices.get();
 
 /**
  * @module ts-browser - like ts-node, this tool allows you
@@ -93,11 +91,9 @@ const loadModuleFromFiles = (baseUrl, cachedFiles) => {
 const LoadRootModule = async ({
     rootModuleUrl,
     compilerOptions = {},
-}) => {
-    const ts = await whenTs;
+}) => {    
     compilerOptions.target = compilerOptions.target || ts.ScriptTarget.ES2018;
     const workerManager = WorkerManager({compilerOptions});
-
     const cachedFiles = {};
     const urlToWhenFileData = {};
     const getFileData = url => {
@@ -106,7 +102,6 @@ const LoadRootModule = async ({
         }
         return urlToWhenFileData[url];
     };
-
     const dynamicImportUrls = new Set();
     const fetchDependencyFiles = async (entryUrl) => {
         dynamicImportUrls.add(entryUrl);

@@ -1,6 +1,6 @@
 
 importScripts(
-    'typescriptServices.js',
+    'vendor/typescript/typescriptServices.js',
     'UrlPathResolver_sideEffects.js',
     'actions/ParseTsModule_sideEffects.js'
 );

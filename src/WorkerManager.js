@@ -1,8 +1,6 @@
+import "./vendor/blueimp-md5/md5.js";
 import {oneSuccess} from "./utils.js";
 import {addPathToUrl} from "./UrlPathResolver.js";
-import blueimpMd5 from "./cdnEs6Wrappers/blueimpMd5.js";
-
-const whenMd5 = blueimpMd5.get();
 
 const EXPLICIT_EXTENSIONS = ['ts', 'js', 'tsx', 'jsx'];
 
@@ -156,8 +154,7 @@ const WorkerManager = ({compilerOptions}) => {
         );
     };
 
-    const parseInWorker = async ({url, fullUrl, tsCode}) => {
-        const md5 = await whenMd5;
+    const parseInWorker = async ({url, fullUrl, tsCode}) => {        
         const checksum = md5(tsCode);
         const fromCache = getFromCache({fullUrl, checksum});
         if (fromCache) {
