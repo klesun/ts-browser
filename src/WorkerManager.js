@@ -11,15 +11,8 @@ const NUM_OF_WORKERS = 3;
 
 const workers = [...Array(NUM_OF_WORKERS).keys()].map(i => {
     const scriptUrl = import.meta.url;
-
     const workerUrl = addPathToUrl('./TranspileWorker.js', scriptUrl);
-    // fuck you CORS
-    const workerBlob = new Blob([
-        'importScripts(' + JSON.stringify(workerUrl) + ')',
-    ], {type: 'application/javascript'});
-    const blobUrl = window.URL.createObjectURL(workerBlob);
-
-    const worker = new Worker(blobUrl);
+    const worker = new Worker(workerUrl);
     worker.onmessage = ({data}) => {
         console.log('Received event from worker #' + i, data);
     };

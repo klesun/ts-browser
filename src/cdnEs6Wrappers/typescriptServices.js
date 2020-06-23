@@ -9,7 +9,7 @@ const get = () => {
             whenLib = Promise.resolve(window.ts);
         } else {
             // kind of lame that typescript does not provide it's own CDN
-            const url = 'https://klesun-misc.github.io/TypeScript/lib/typescriptServices.js';
+            const url = 'ts-browser/src/typescriptServices.js';
             whenLib = fetch(url)
                 .then(rs => rs.text())
                 .then(jsCode => {
