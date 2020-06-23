@@ -8,7 +8,6 @@ const get = () => {
         if (window.md5) {
             whenLib = Promise.resolve(window.md5);
         } else {
-            // kind of lame that typescript does not provide it's own CDN
             const url = 'https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.12.0/js/md5.js';
             whenLib = fetch(url)
                 .then(rs => rs.text())
