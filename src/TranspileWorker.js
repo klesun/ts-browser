@@ -1,9 +1,14 @@
 
+const workerPramsStr = location.hash.replace(/^#/, '');
+const workerParams = workerPramsStr ? JSON.parse(workerPramsStr) : {};
+const workerUrl = workerParams.workerUrl || 'https://klesun-productions.com/entry/ts-browser/src/TranspileWorker.js';
+const workerPath = workerUrl.replace(/\/[^/]+$/, '/');
+
 const main = () => {
     self.importScripts(
         'https://klesun-misc.github.io/TypeScript/lib/typescriptServices.js',
-        'https://klesun-productions.com/entry/ts-browser/src/UrlPathResolver_sideEffects.js',
-        'https://klesun-productions.com/entry/ts-browser/src/actions/ParseTsModule_sideEffects.js'
+        workerPath + '/UrlPathResolver_sideEffects.js',
+        workerPath + '/actions/ParseTsModule_sideEffects.js'
     );
     const org = self.org;
     /** @type {ts} */

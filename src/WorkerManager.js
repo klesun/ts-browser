@@ -13,11 +13,13 @@ const workers = [...Array(NUM_OF_WORKERS).keys()].map(i => {
     const scriptUrl = import.meta.url;
 
     const workerUrl = addPathToUrl('./TranspileWorker.js', scriptUrl);
-    // fuck you CORS
+    // blob to deal with CORS
+    // see https://stackoverflow.com/questions/20410119/cross-domain-web-worker/60252783#60252783
     const workerBlob = new Blob([
         'importScripts(' + JSON.stringify(workerUrl) + ')',
     ], {type: 'application/javascript'});
-    const blobUrl = window.URL.createObjectURL(workerBlob);
+    const blobUrl = window.URL.createObjectURL(workerBlob) +
+        '#' + JSON.stringify({workerUrl});
 
     const worker = new Worker(blobUrl);
     worker.onmessage = ({data}) => {
