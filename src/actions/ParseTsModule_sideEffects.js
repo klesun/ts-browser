@@ -13,8 +13,18 @@ const es6ToDestr = (tsCode, importClause) => {
     if (namedBindings) {
         const {elements = [], name = null} = namedBindings;
         if (elements.length > 0) {
-            // `import {A, B, C} from './module';`
-            return 'const ' + text;
+            // `import {A, B, C as Cc} from './module';`
+            let items = [];
+            for (let el of elements) {
+                if (el.propertyName) {
+                    // name as propertyName
+                    items.push(el.propertyName.escapedText + ": " + el.name.escapedText);
+                } else {
+                    // just name
+                    items.push(el.name.escapedText);
+                }
+            }
+            return 'const {' + items.join(", ") + "}";
         } else if (name && name.escapedText) {
             return 'const ' + name.escapedText;
         } else {
