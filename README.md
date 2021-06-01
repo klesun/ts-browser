@@ -1,6 +1,6 @@
 # ts-browser ![](./docs/ts-browser.svg)
 
-Run typescript files on the fly with dependencies. Like [ts-node](https://www.npmjs.com/package/ts-node), but for browser.
+Run typescript files with imports on the fly. Like [ts-node](https://www.npmjs.com/package/ts-node), but for browser.
 
 Perfect fallback solution for environments that are only supposed to host static source files (like [GitHub Pages](https://help.github.com/en/github/working-with-github-pages/about-github-pages)).
 
