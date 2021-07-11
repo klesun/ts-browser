@@ -2,13 +2,10 @@
 import {b64EncodeUnicode} from "./utils.js";
 import {addPathToUrl} from "./UrlPathResolver.js";
 import WorkerManager from "./WorkerManager.js";
-import typescriptServices from "./cdnEs6Wrappers/typescriptServices.js";
 import {tryEvalLegacyJsModule} from "./sideEffectModules/sideEffectUtils.js";
 
 const CACHE_LOADED = 'ts-browser-loaded-modules';
 const IMPORT_DYNAMIC = 'ts-browser-import-dynamic';
-
-const whenTs = typescriptServices.get();
 
 /**
  * @module ts-browser - like ts-node, this tool allows you
@@ -89,13 +86,15 @@ const loadModuleFromFiles = (baseUrl, cachedFiles) => {
     return load(baseUrl);
 };
 
+/** ts.ScriptTarget.ES2018 */
+const TS_SCRIPT_TARGET_ES2018 = 5;
+
 /** @param {ts.CompilerOptions} compilerOptions */
 const LoadRootModule = async ({
     rootModuleUrl,
     compilerOptions = {},
 }) => {
-    const ts = await whenTs;
-    compilerOptions.target = compilerOptions.target || ts.ScriptTarget.ES2018;
+    compilerOptions.target = compilerOptions.target || TS_SCRIPT_TARGET_ES2018;
     const workerManager = WorkerManager({compilerOptions});
 
     const cachedFiles = {};
