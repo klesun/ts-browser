@@ -1,13 +1,18 @@
 import {oneSuccess} from "./utils.js";
 import {addPathToUrl} from "./UrlPathResolver.js";
-import blueimpMd5 from "./cdnEs6Wrappers/blueimpMd5.js";
-
-const whenMd5 = blueimpMd5.get();
 
 const EXPLICIT_EXTENSIONS = ['ts', 'js', 'tsx', 'jsx'];
 
 // on my 4-core PC 3 workers seems to be the optimal solution
 const NUM_OF_WORKERS = 3;
+
+/**
+ * this number must supposedly be updated in case generated code
+ * format changes, very hope I won't forget to update it every time
+ *
+ * it's the md5 of the last commit
+ */
+const CACHED_FORMAT_VERSION = 'c364de0a57780ef0d248878f6fd710fff8c6fff9';
 
 const workers = [...Array(NUM_OF_WORKERS).keys()].map(i => {
     const scriptUrl = import.meta.url;
@@ -139,6 +144,17 @@ const putToCache = ({fullUrl, checksum, jsCode, ...rs}) => {
     }));
 };
 
+/**
+ * @cudos https://stackoverflow.com/a/50767210/2750743
+ * @param {ArrayBuffer} buffer
+ * @return {string}
+ */
+function bufferToHex (buffer) {
+    return [...new Uint8Array(buffer)]
+        .map(b => b.toString(16).padStart(2, "0"))
+        .join("");
+}
+
 const WorkerManager = ({compilerOptions}) => {
     const fetchModuleSrc = (url) => {
         // typescript does not allow specifying extension in the import, but react
@@ -166,8 +182,12 @@ const WorkerManager = ({compilerOptions}) => {
     };
 
     const parseInWorker = async ({url, fullUrl, tsCode}) => {
-        const md5 = await whenMd5;
-        const checksum = md5(tsCode);
+        const sourceCodeBytes = new TextEncoder().encode(
+            '// ts-browser format version: ' + CACHED_FORMAT_VERSION + '\n' + tsCode
+        );
+        const checksum = await crypto.subtle.digest(
+            'SHA-256', sourceCodeBytes
+        ).then(bufferToHex);
         const fromCache = getFromCache({fullUrl, checksum});
         if (fromCache) {
             // ensure `url` won't be taken from cache, as it
