@@ -185,10 +185,13 @@ const WorkerManager = ({compilerOptions}) => {
         const sourceCodeBytes = new TextEncoder().encode(
             '// ts-browser format version: ' + CACHED_FORMAT_VERSION + '\n' + tsCode
         );
-        const checksum = await crypto.subtle.digest(
-            'SHA-256', sourceCodeBytes
-        ).then(bufferToHex);
-        const fromCache = getFromCache({fullUrl, checksum});
+        // only available on https pages, probably should just use some simple inline checksum
+        // function, like crc, but bigger than 32 bytes to make sure there won't be collisions
+        const checksum = !crypto.subtle ? null : 
+            await crypto.subtle.digest(
+                'SHA-256', sourceCodeBytes
+            ).then(bufferToHex);
+        const fromCache = !checksum ? null : getFromCache({fullUrl, checksum});
         if (fromCache) {
             // ensure `url` won't be taken from cache, as it
             // is often used as key without extension outside
@@ -198,7 +201,9 @@ const WorkerManager = ({compilerOptions}) => {
                 fullUrl, tsCode, compilerOptions,
             })).then(({whenJsCode, ...importData}) => {
                 const rs = {url, ...importData};
-                if (fullUrl.endsWith('.ts') || fullUrl.endsWith('.tsx')) {
+                if (!checksum) {
+                    // can't cache, as hashing function not available on non-https
+                } else if (fullUrl.endsWith('.ts') || fullUrl.endsWith('.tsx')) {
                     whenJsCode.then(jsCode => {
                         putToCache({...rs, fullUrl, checksum, jsCode});
                     });
