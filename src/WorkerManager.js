@@ -18,21 +18,17 @@ const workers = [...Array(NUM_OF_WORKERS).keys()].map(i => {
     const scriptUrl = import.meta.url;
 
     const workerUrl = addPathToUrl('./TranspileWorker.js', scriptUrl);
-    // blob to deal with CORS
-    // see https://stackoverflow.com/questions/20410119/cross-domain-web-worker/60252783#60252783
-    const workerBlob = new Blob([
-        'importScripts(' + JSON.stringify(workerUrl) + ')',
-    ], {type: 'application/javascript'});
-    const blobUrl = window.URL.createObjectURL(workerBlob) +
-        '#' + JSON.stringify({workerUrl});
+    const whenWorker = fetch(workerUrl).then(rs => rs.text()).then(workerCode => {
+        return new Worker(window.URL.createObjectURL(new Blob([workerCode])));
+    });
 
-    const worker = new Worker(blobUrl);
-    worker.onmessage = ({data}) => {
-        console.log('Received event from worker #' + i, data);
-    };
     let lastReferenceId = 0;
     const referenceIdToCallback = new Map();
-    worker.onmessage = ({data}) => {
+
+    whenWorker.then(w => w.onmessage = ({data}) => {
+        console.log('Received event from worker #' + i, data);
+    });
+    whenWorker.then(w => w.onmessage = ({data}) => {
         const {messageType, messageData, referenceId} = data;
         const callback = referenceIdToCallback.get(referenceId);
         if (callback) {
@@ -40,17 +36,18 @@ const workers = [...Array(NUM_OF_WORKERS).keys()].map(i => {
         } else {
             console.debug('Unexpected message from worker #' + i, data);
         }
-    };
+    });
+
     let whenFree = Promise.resolve();
     return {
         getWhenFree: () => whenFree,
         parseTsModule: (params) => {
             const referenceId = ++lastReferenceId;
-            worker.postMessage({
+            whenWorker.then(w => w.postMessage({
                 messageType: 'parseTsModule',
                 messageData: params,
                 referenceId: referenceId,
-            });
+            }));
             return new Promise((ok, err) => {
                 let reportJsCodeOk, reportJsCodeErr;
                 referenceIdToCallback.set(referenceId, ({messageType, messageData}) => {
