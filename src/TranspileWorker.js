@@ -1,7 +1,7 @@
 
 const workerPramsStr = location.hash.replace(/^#/, '');
 const workerParams = workerPramsStr ? JSON.parse(workerPramsStr) : {};
-const workerUrl = workerParams.workerUrl || 'https://klesun-productions.com/entry/ts-browser/src/TranspileWorker.js';
+const workerUrl = workerParams.workerUrl || 'https://klesun.github.io/ts-browser/src/TranspileWorker.js';
 const workerPath = workerUrl.replace(/\/[^/]+$/, '/');
 
 const main = () => {
