@@ -1,7 +1,7 @@
 import {oneSuccess} from "./utils.js";
 import {addPathToUrl} from "./UrlPathResolver.js";
 
-const EXPLICIT_EXTENSIONS = ['ts', 'js', 'tsx', 'jsx'];
+const EXPLICIT_EXTENSIONS = ['ts', 'js', 'tsx', 'jsx', 'mjs'];
 
 // on my 4-core PC 3 workers seems to be the optimal solution
 const NUM_OF_WORKERS = 3;
