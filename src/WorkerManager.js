@@ -19,7 +19,8 @@ const workers = [...Array(NUM_OF_WORKERS).keys()].map(i => {
 
     const workerUrl = addPathToUrl('./TranspileWorker.js', scriptUrl);
     const whenWorker = fetch(workerUrl).then(rs => rs.text()).then(workerCode => {
-        return new Worker(window.URL.createObjectURL(new Blob([workerCode])));
+        const scriptBlobUrl = window.URL.createObjectURL(new Blob([workerCode]));
+        return new Worker(scriptBlobUrl + '#' + new URLSearchParams({workerUrl}));
     });
 
     let lastReferenceId = 0;
