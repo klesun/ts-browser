@@ -131,13 +131,16 @@ org.klesun.tsBrowser.ParseTsModule_sideEffects = ({
             const relPath = statement.moduleSpecifier.text;
             const {importClause = null} = statement;
             const depUrl = addPathToUrl(relPath, fullUrl);
-            if (importClause) {
+            if (!importClause) {
+                // leaving a blank line so that stack trace matched original lines
+                tsCodeAfterImports += '\n';
+            } else if (importClause.isTypeOnly) {
+                tsCodeAfterImports += '\n';
+                continue; // ignore `import type ...` statements
+            } else {
                 // can be not set in case of side-effectish `import './some/url.css';`
                 const assignedValue = 'window[' + JSON.stringify(CACHE_LOADED) + '][' + JSON.stringify(depUrl) + ']';
                 jsCodeImports += es6ToDestr(tsCode, importClause) + ' = ' + assignedValue + ';\n';
-            } else {
-                // leaving a blank line so that stack trace matched original lines
-                tsCodeAfterImports += '\n';
             }
             staticDependencies.push({url: depUrl});
         } else {
