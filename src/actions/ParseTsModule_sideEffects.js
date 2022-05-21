@@ -24,6 +24,10 @@ const es6ToDestr = (tsCode, importClause) => {
                     items.push(el.name.escapedText);
                 }
             }
+            if (importClause.name && importClause.name.escapedText) {
+                // import Api, {createUuid} from "./modules/Api";
+                items.push('default: ' + importClause.name.escapedText);
+            }
             return 'const {' + items.join(", ") + "}";
         } else if (name && name.escapedText) {
             return 'const ' + name.escapedText;
