@@ -23,7 +23,7 @@ export default (composeCont) => {
 };
 ```
 
-I highly recommend you to also use the [@typescript-eslint/consistent-type-imports](https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/consistent-type-imports.md) eslint rule to make sure that no extra files will be retrieved for type-only imports 
+I highly recommend you to also use the [@typescript-eslint/consistent-type-imports](https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/consistent-type-imports.md) eslint rule to make sure that no redundant http requests will be performed for type-only imports 
 
 The script uses [`typescriptServices.js`](https://github.com/microsoft/TypeScript/blob/master/lib/typescriptServices.d.ts) to parse ts file for dependencies and transpile it to js.
 
