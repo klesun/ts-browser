@@ -48,6 +48,7 @@ const main = () => {
                     message: exc.message,
                     stack: exc.stack,
                 },
+                referenceId: ((evt || {}).data || {}).referenceId,
             });
         }
     };
@@ -55,6 +56,15 @@ const main = () => {
 
 try {
     main();
+    self.postMessage({
+        messageType: 'ready',
+    });
 } catch (exc) {
-    self.postMessage('Failed to initialize worker - ' + exc + '\n' + exc.stack);
+    self.postMessage({
+        messageType: 'error',
+        messageData: {
+            message: 'Failed to initialize worker - ' + exc,
+            stack: exc.stack,
+        },
+    });
 }

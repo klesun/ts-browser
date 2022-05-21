@@ -14,6 +14,19 @@ const NUM_OF_WORKERS = 3;
  */
 const CACHED_FORMAT_VERSION = 'c364de0a57780ef0d248878f6fd710fff8c6fff9';
 
+function eventToError(data, contextMessage) {
+    const {messageType, messageData} = data;
+    if (messageType === 'error') {
+        const msg = contextMessage + ' - ' + messageData.message;
+        const exc = new Error(msg);
+        exc.stack += '\nCaused by:\n' + messageData.stack;
+        return exc;
+    } else {
+        const msg = contextMessage + ' - ' + JSON.stringify(data);
+        return new Error(msg);
+    }
+}
+
 const workers = [...Array(NUM_OF_WORKERS).keys()].map(i => {
     const scriptUrl = import.meta.url;
 
@@ -21,14 +34,21 @@ const workers = [...Array(NUM_OF_WORKERS).keys()].map(i => {
     const whenWorker = fetch(workerUrl).then(rs => rs.text()).then(workerCode => {
         const scriptBlobUrl = window.URL.createObjectURL(new Blob([workerCode]));
         return new Worker(scriptBlobUrl + '#' + new URLSearchParams({workerUrl}));
+    }).then(worker => {
+        return new Promise((resolve, reject) => {
+            worker.onmessage = ({data}) => {
+                if (data.messageType === 'ready') {
+                    resolve(worker);
+                } else {
+                    reject(eventToError(data, 'Worker #' + i));
+                }
+            };
+        });
     });
 
     let lastReferenceId = 0;
     const referenceIdToCallback = new Map();
 
-    whenWorker.then(w => w.onmessage = ({data}) => {
-        console.log('Received event from worker #' + i, data);
-    });
     whenWorker.then(w => w.onmessage = ({data}) => {
         const {messageType, messageData, referenceId} = data;
         const callback = referenceIdToCallback.get(referenceId);
@@ -42,16 +62,18 @@ const workers = [...Array(NUM_OF_WORKERS).keys()].map(i => {
     let whenFree = Promise.resolve();
     return {
         getWhenFree: () => whenFree,
-        parseTsModule: (params) => {
+        parseTsModule: async (params) => {
             const referenceId = ++lastReferenceId;
-            whenWorker.then(w => w.postMessage({
+            const worker = await whenWorker;
+            worker.postMessage({
                 messageType: 'parseTsModule',
                 messageData: params,
                 referenceId: referenceId,
-            }));
+            });
             return new Promise((ok, err) => {
                 let reportJsCodeOk, reportJsCodeErr;
-                referenceIdToCallback.set(referenceId, ({messageType, messageData}) => {
+                referenceIdToCallback.set(referenceId, (payload) => {
+                    const {messageType, messageData} = payload;
                     if (messageType === 'parseTsModule_deps') {
                         const {isJsSrc, staticDependencies, dynamicDependencies} = messageData;
                         const whenJsCode = new Promise((ok, err) => {
@@ -67,10 +89,13 @@ const workers = [...Array(NUM_OF_WORKERS).keys()].map(i => {
                         referenceIdToCallback.delete(referenceId);
                     } else {
                         const reject = reportJsCodeErr || err;
-                        const msg = 'Unexpected parseTsModule() worker response';
-                        const exc = new Error(msg);
-                        exc.data = {messageType, messageData};
-                        reject(exc);
+                        let contextMessage;
+                        if (messageType === 'error') {
+                            contextMessage = 'Failed to transpile ' + params.fullUrl;
+                        } else {
+                            contextMessage = 'Unexpected parseTsModule() worker response at ' + params.fullUrl;
+                        }
+                        reject(eventToError(payload, contextMessage));
                         referenceIdToCallback.delete(referenceId);
                     }
                 });
