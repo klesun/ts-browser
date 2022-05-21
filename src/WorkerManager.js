@@ -12,7 +12,7 @@ const NUM_OF_WORKERS = 3;
  *
  * it's the md5 of the last commit
  */
-const CACHED_FORMAT_VERSION = 'c364de0a57780ef0d248878f6fd710fff8c6fff9';
+const CACHED_FORMAT_VERSION = 'c5cf72a8627e15938f522ddc742c99c98b4bf6e9';
 
 function eventToError(data, contextMessage) {
     const {messageType, messageData} = data;
