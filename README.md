@@ -4,7 +4,7 @@ Run typescript files with imports on the fly. Like [ts-node](https://www.npmjs.c
 
 Perfect fallback solution for environments that are only supposed to host static source files (like [GitHub Pages](https://help.github.com/en/github/working-with-github-pages/about-github-pages)).
 
-Usage: ([sample project](https://github.com/klesun/klesun.github.io/tree/master/entry/midiana))
+Usage: ([sample project](https://klesun.net/entry/midiana/))
 ```html
 <!-- index.html -->
 <script type="module">
