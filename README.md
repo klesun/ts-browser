@@ -24,8 +24,11 @@ export default (composeCont) => {
 ```
 __________________
 You can also use it with `.tsx` files:
+
 https://github.com/klesun-misc/ts-browser-react-example/blob/master/index.html
+
 https://klesun-misc.github.io/ts-browser-react-example/
+
 ```html
 <script type="module">
     import {loadModule} from 'https://klesun.github.io/ts-browser/src/ts-browser.js';
