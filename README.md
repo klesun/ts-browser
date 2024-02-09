@@ -22,7 +22,7 @@ export default (composeCont) => {
     composeCont.appendChild(makePanel());
 };
 ```
-
+__________________
 You can also use it with `.tsx` files:
 https://github.com/klesun-misc/ts-browser-react-example/blob/master/index.html
 https://klesun-misc.github.io/ts-browser-react-example/
