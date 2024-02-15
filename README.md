@@ -9,6 +9,7 @@ Usage: ([sample project](https://klesun.net/entry/midiana/))
 <!-- index.html -->
 <script type="module">
     import {loadModule} from 'https://klesun.github.io/ts-browser/src/ts-browser.js';
+    // language=file-reference
     loadModule('./index.ts').then(indexModule => {
         return indexModule.default(document.getElementById('composeCont'));
     });
@@ -32,7 +33,7 @@ https://klesun-misc.github.io/ts-browser-react-example/
 ```html
 <script type="module">
     import {loadModule} from 'https://klesun.github.io/ts-browser/src/ts-browser.js';
-    //import {loadModule} from '../../entry/ts-browser/src/ts-browser.js';
+    // language=file-reference
     loadModule('./app.tsx', {
         jsx: 2, // ts.JsxEmit.React
     });
