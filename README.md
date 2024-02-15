@@ -10,7 +10,8 @@ Usage: ([sample project](https://klesun.net/entry/midiana/))
 <script type="module">
     import {loadModule} from 'https://klesun.github.io/ts-browser/src/ts-browser.js';
     // language=file-reference
-    loadModule('./index.ts').then(indexModule => {
+    const entryScriptPath = './index.ts';
+    loadModule(entryScriptPath).then(indexModule => {
         return indexModule.default(document.getElementById('composeCont'));
     });
 </script>
@@ -34,7 +35,8 @@ https://klesun-misc.github.io/ts-browser-react-example/
 <script type="module">
     import {loadModule} from 'https://klesun.github.io/ts-browser/src/ts-browser.js';
     // language=file-reference
-    loadModule('./app.tsx', {
+    const entryScriptPath = './app.tsx';
+    loadModule(entryScriptPath, {
         jsx: 2, // ts.JsxEmit.React
     });
 </script>
