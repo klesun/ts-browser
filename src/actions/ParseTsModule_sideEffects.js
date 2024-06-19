@@ -122,7 +122,7 @@ org.klesun.tsBrowser.ParseTsModule_sideEffects = ({
 }) => {
     const extension = fullUrl.replace(/^.*\./, '');
     const sourceFile = ts.createSourceFile(
-        'ololo.' + extension, tsCode, compilerOptions.target
+        'ts-browser-generated-file.' + extension, tsCode, compilerOptions.target
     );
     let jsCodeImports = '';
     let tsCodeAfterImports = '';

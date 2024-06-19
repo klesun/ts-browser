@@ -201,7 +201,7 @@ function tryFetchModuleSrcExtOrNot(url, jsx) {
     const explicitExtension = EXPLICIT_EXTENSIONS.find(ext => url.endsWith('.' + ext));
     if (explicitExtension) {
         const whenModule = tryFetchModuleSrcWithExt(url);
-        if (explicitExtension !== "js") {
+        if (explicitExtension === "js") {
             // when you import .ts files, compiler normally does not let you specify ".ts" explicitly
             // you can only use ".js" extension or no extension at all to refer to that .ts file
             // since typescript allows referring to .ts files by .js extension - so should we
