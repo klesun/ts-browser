@@ -12,7 +12,7 @@ const NUM_OF_WORKERS = 3;
  *
  * it's the md5 of the last commit
  */
-const CACHED_FORMAT_VERSION = 'c5cf72a8627e15938f522ddc742c99c98b4bf6e9';
+const CACHED_FORMAT_VERSION = '4b3e236d842f6ca0a86cd571c4c203ab8c6cde7a';
 
 function eventToError(data, contextMessage) {
     const {messageType, messageData} = data;
@@ -178,30 +178,67 @@ function bufferToHex (buffer) {
         .join("");
 }
 
+function tryFetchModuleSrcWithExt(fullUrl) {
+    return fetch(fullUrl)
+        .then(rs => {
+            if (rs.status === 200) {
+                return rs.text().then(tsCode => ({fullUrl, tsCode}));
+            } else {
+                const msg = 'Failed to fetch module file ' + rs.status + ': ' + fullUrl;
+                return Promise.reject(new Error(msg));
+            }
+        });
+}
+
+/**
+ * @param {string} url
+ * @param {boolean} jsx
+ */
+function tryFetchModuleSrcExtOrNot(url, jsx) {
+    // typescript does not allow specifying extension in the import, but react
+    // files may have .tsx extension rather than .ts, so have to check both
+    const urlOptions = [];
+    const explicitExtension = EXPLICIT_EXTENSIONS.find(ext => url.endsWith('.' + ext));
+    if (explicitExtension) {
+        const whenModule = tryFetchModuleSrcWithExt(url);
+        if (explicitExtension !== "js") {
+            // when you import .ts files, compiler normally does not let you specify ".ts" explicitly
+            // you can only use ".js" extension or no extension at all to refer to that .ts file
+            // since typescript allows referring to .ts files by .js extension - so should we
+            return whenModule.catch(async jsExtError => {
+                try {
+                    return await tryFetchModuleSrcWithExt(url.replace(/\.js$/, "") + ".ts")
+                } catch {
+                    throw jsExtError;
+                }
+            });
+        } else {
+            return whenModule;
+        }
+    }
+    urlOptions.push(url + '.ts');
+    if (jsx) {
+        urlOptions.push(url + '.tsx');
+    }
+    return oneSuccess(
+        urlOptions.map(tryFetchModuleSrcWithExt)
+    ).catch(async tsExtError => {
+        // if nor .ts, nor .tsx extension works - try the .js
+        // the lib would be happier if .js file imports always included
+        // the .js extension as is the requirement in es6 imports, but
+        // IDEA does not include extensions in imports by default, so it's still a use
+        // case - let's make it work when we can: better slower than not working at all
+        try {
+            return await tryFetchModuleSrcWithExt(url + ".js")
+        } catch {
+            throw tsExtError;
+        }
+    });
+}
+
 const WorkerManager = ({compilerOptions}) => {
     const fetchModuleSrc = (url) => {
-        // typescript does not allow specifying extension in the import, but react
-        // files may have .tsx extension rather than .ts, so have to check both
-        const urlOptions = [];
-        if (EXPLICIT_EXTENSIONS.some(ext => url.endsWith('.' + ext))) {
-            urlOptions.push(url);
-        } else {
-            urlOptions.push(url + '.ts');
-            if (compilerOptions.jsx) {
-                urlOptions.push(url + '.tsx');
-            }
-        }
-        return oneSuccess(
-            urlOptions.map(fullUrl => fetch(fullUrl)
-                .then(rs => {
-                    if (rs.status === 200) {
-                        return rs.text().then(tsCode => ({fullUrl, tsCode}));
-                    } else {
-                        const msg = 'Failed to fetch module file ' + rs.status + ': ' + fullUrl;
-                        return Promise.reject(new Error(msg));
-                    }
-                }))
-        );
+        return tryFetchModuleSrcExtOrNot(url, compilerOptions.jsx);
     };
 
     const parseInWorker = async ({url, fullUrl, tsCode}) => {
@@ -210,7 +247,7 @@ const WorkerManager = ({compilerOptions}) => {
         );
         // only available on https pages, probably should just use some simple inline checksum
         // function, like crc, but bigger than 32 bytes to make sure there won't be collisions
-        const checksum = !crypto.subtle ? null : 
+        const checksum = !crypto.subtle ? null :
             await crypto.subtle.digest(
                 'SHA-256', sourceCodeBytes
             ).then(bufferToHex);
