@@ -1,10 +1,17 @@
 {
   "name": "ts-browser-klesun",
-  "version": "0.2.1",
+  "version": "0.3.2",
   "description": "Run typescript files on the fly with dependencies. Like ts-node, but for browser.",
   "keywords": ["typescript", "browser", "real-time", "interpreter", "imports", "webpackmustdie"],
   "author": "klesun",
   "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/klesun/ts-browser/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/klesun/ts-browser.git"
+  },
   "dependencies": {},
   "devDependencies": {}
 }
