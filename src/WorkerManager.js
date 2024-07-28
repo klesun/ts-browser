@@ -180,6 +180,12 @@ function bufferToHex (buffer) {
 
 function tryFetchModuleSrcWithExt(fullUrl) {
     return fetch(fullUrl)
+        .catch(error => {
+            if (error instanceof Error) {
+                error.message += ' ' + fullUrl;
+            }
+            throw error;
+        })
         .then(rs => {
             if (rs.status === 200) {
                 return rs.text().then(tsCode => ({fullUrl, tsCode}));
