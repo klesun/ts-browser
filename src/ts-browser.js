@@ -111,20 +111,22 @@ const LoadRootModule = async ({
         dynamicImportUrls.add(entryUrl);
         const urlToPromise = {};
         urlToPromise[entryUrl] = getFileData(entryUrl);
-        let promises;
+        let entries;
         let safeguard = 10000;
-        while ((promises = Object.values(urlToPromise)).length > 0) {
+        while ((entries = Object.entries(urlToPromise)).length > 0) {
             if (--safeguard <= 0) {
                 throw new Error('Got into infinite loop while fetching dependencies of ' + entryUrl);
             }
-            const next = await Promise.race(promises);
+            const [importingUrl, next] = await Promise.race(
+                entries.map(e => e[1].then(result => [e[0], result]))
+            );
             cachedFiles[next.url] = next;
             delete urlToPromise[next.url];
             for (const {url} of next.staticDependencies) {
                 if (!urlToPromise[url] && !cachedFiles[url]) {
                     urlToPromise[url] = getFileData(url).catch(error => {
                         if (error instanceof Error) {
-                            error.message += " - importing from " + entryUrl;
+                            error.message += " - importing from " + importingUrl;
                         }
                         throw error;
                     });
