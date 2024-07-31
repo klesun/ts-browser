@@ -122,7 +122,12 @@ const LoadRootModule = async ({
             delete urlToPromise[next.url];
             for (const {url} of next.staticDependencies) {
                 if (!urlToPromise[url] && !cachedFiles[url]) {
-                    urlToPromise[url] = getFileData(url);
+                    urlToPromise[url] = getFileData(url).catch(error => {
+                        if (error instanceof Error) {
+                            error.message = " - importing from " + entryUrl;
+                        }
+                        throw error;
+                    });
                 }
             }
             for (const dep of next.dynamicDependencies) {
