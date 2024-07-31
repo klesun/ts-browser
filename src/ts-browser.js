@@ -124,7 +124,7 @@ const LoadRootModule = async ({
                 if (!urlToPromise[url] && !cachedFiles[url]) {
                     urlToPromise[url] = getFileData(url).catch(error => {
                         if (error instanceof Error) {
-                            error.message = " - importing from " + entryUrl;
+                            error.message += " - importing from " + entryUrl;
                         }
                         throw error;
                     });
