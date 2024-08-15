@@ -55,7 +55,7 @@ If you are using `.tsx` and the load speed is more important than compatibility 
   "jsx": "always"
 }],
 ```
-This will enforce `.ts`/`.tsx` extensions in your imports allowing the compiler to know exactly what file to fetch instead of probing all possible extensions - that basically reduces the number of http requests by half, especiall crucial on cellular network.
+This will enforce `.ts`/`.tsx` extensions in your imports allowing the compiler to know exactly what file to fetch instead of probing all possible extensions - that basically reduces the number of http requests by half, especially crucial on cellular network.
 ____________________
 
 The script uses [`typescriptServices.js`](https://github.com/microsoft/TypeScript/blob/master/lib/typescriptServices.d.ts) to parse ts file for dependencies and transpile it to js.
