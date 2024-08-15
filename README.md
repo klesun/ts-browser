@@ -46,7 +46,7 @@ ________________
 
 I highly recommend you to also use the [@typescript-eslint/consistent-type-imports](https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/consistent-type-imports.md) eslint rule to make sure that no redundant http requests will be performed for type-only imports 
 
-If you are using `.tsx` and the load speed is more important than compatibility with plain `tsc` emit for you, then I also suggest set [`allowImportingTsExtensions`](https://www.typescriptlang.org/tsconfig/#allowImportingTsExtensions) to `true` in `compilerOptions` of your `tsconfig.json` and to install [`eslint-plugin-import`](https://github.com/import-js/eslint-plugin-import) with following configuration:
+If you are using `.tsx` and the load speed is more important than compatibility with plain `tsc` emit for you, then I also suggest to set [`allowImportingTsExtensions`](https://www.typescriptlang.org/tsconfig/#allowImportingTsExtensions) to `true` in `compilerOptions` of your `tsconfig.json` and to install [`eslint-plugin-import`](https://github.com/import-js/eslint-plugin-import) with following configuration:
 ```json
 "import/extensions": ["error", {
   "ts": "always",
