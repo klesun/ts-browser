@@ -11,7 +11,7 @@ const mobileCheck = function() {
 };
 
 // on my 4-core PC 3 workers seems to be the optimal solution
-// on iOS or on any mobile device with poor network connection better to use just one, as each worker 
+// on iOS or on any mobile device with poor network connection better to use just one, as each worker
 // downloads and individual instance of typescript compiler which is the bottleneck of loading time
 const NUM_OF_WORKERS = mobileCheck() ? 1 : 3;
 
@@ -266,7 +266,9 @@ const WorkerManager = ({compilerOptions}) => {
             await crypto.subtle.digest(
                 'SHA-256', sourceCodeBytes
             ).then(bufferToHex);
-        const fromCache = !checksum ? null : getFromCache({fullUrl, checksum});
+        // fuuuuuuuuck localStorage is domain wide, but links in cache are relative!!!
+        // const fromCache = !checksum ? null : getFromCache({fullUrl, checksum});
+        const fromCache = null;
         if (fromCache) {
             // ensure `url` won't be taken from cache, as it
             // is often used as key without extension outside
