@@ -18,7 +18,7 @@ Usage: ([sample project](https://klesun.net/entry/midiana/))
 ```
 ```typescript
 // index.ts
-import {makePanel} from './utils/SomeDomMaker';
+import {makePanel} from './utils/SomeDomMaker.ts';
 
 export default (composeCont) => {
     composeCont.appendChild(makePanel());
