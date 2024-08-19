@@ -281,9 +281,10 @@ const WorkerManager = ({compilerOptions}) => {
                 if (!checksum) {
                     // can't cache, as hashing function not available on non-https
                 } else if (fullUrl.endsWith('.ts') || fullUrl.endsWith('.tsx')) {
-                    whenJsCode.then(jsCode => {
-                        putToCache({...rs, fullUrl, checksum, jsCode});
-                    });
+                    // commenting for now since caching is disabled and some Mac OS environments complain about "The operation is insecure" in this function
+                    //whenJsCode.then(jsCode => {
+                    //    putToCache({...rs, fullUrl, checksum, jsCode});
+                    //});
                 } else {
                     // no caching for large raw js libs
                 }
