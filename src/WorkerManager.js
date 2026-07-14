@@ -1,5 +1,6 @@
 import {oneSuccess} from "./utils.js";
 import {addPathToUrl} from "./UrlPathResolver.js";
+import {getImportMap} from "./ImportMap.js";
 
 const EXPLICIT_EXTENSIONS = ['ts', 'js', 'tsx', 'jsx', 'mjs'];
 
@@ -212,7 +213,7 @@ function tryFetchModuleSrcWithExt(fullUrl) {
 function tryFetchModuleSrcExtOrNot(url, jsx) {
     // typescript does not allow specifying extension in the import, but react
     // files may have .tsx extension rather than .ts, so have to check both
-    const urlOptions = [];
+    const urlOptions = [url];
     const explicitExtension = EXPLICIT_EXTENSIONS.find(ext => url.endsWith('.' + ext));
     if (explicitExtension) {
         const whenModule = tryFetchModuleSrcWithExt(url);
@@ -274,8 +275,9 @@ const WorkerManager = ({compilerOptions}) => {
             // is often used as key without extension outside
             return {...fromCache, url};
         } else {
+            const importMap = getImportMap();
             return withFreeWorker(worker => worker.parseTsModule({
-                fullUrl, tsCode, compilerOptions,
+                fullUrl, tsCode, compilerOptions, importMap
             })).then(({whenJsCode, ...importData}) => {
                 const rs = {url, ...importData};
                 if (!checksum) {

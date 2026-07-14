@@ -3,11 +3,23 @@ var org = org || {};
 org.klesun = org.klesun || {};
 org.klesun.tsBrowser = org.klesun.tsBrowser || {};
 
-org.klesun.tsBrowser.addPathToUrl = (path, baseUrl) => {
+/**
+ * @param {string} path
+ * @param {string} baseUrl
+ * @param {import("./ImportMap").ImportMap} importMap
+ * @returns {string}
+ */
+org.klesun.tsBrowser.addPathToUrl = (path, baseUrl, importMap = {}) => {
     let result;
     if (path.startsWith('/') || path.match(/^https?:\/\//)) {
         // full path from the site root
         result = path;
+    } else if (!path.startsWith('.')) {
+        if (importMap.imports[path]) return importMap.imports[path];
+        throw new Error(
+            `Cannot resolve bare import "${path}" — ` +
+            `you can use <script type="importmap"> or use a relative/absolute path.`
+        );
     } else {
         const urlParts = baseUrl.split('/');
         const pathParts = path.split('/');

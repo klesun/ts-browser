@@ -49,7 +49,7 @@ const es6ToDestr = (tsCode, importClause) => {
 const CACHE_LOADED = 'ts-browser-loaded-modules';
 const IMPORT_DYNAMIC = 'ts-browser-import-dynamic';
 
-const transformStatement = ({statement, sourceFile, baseUrl, ts}) => {
+const transformStatement = ({statement, sourceFile, baseUrl, ts, importMap}) => {
     const dynamicDependencies = [];
 
     const getNodeText = node => {
@@ -72,7 +72,7 @@ const transformStatement = ({statement, sourceFile, baseUrl, ts}) => {
             ')';
             resultParts.push(newCallCode);
             const url = ts.SyntaxKind[arg.kind] !== 'StringLiteral' ? null :
-                org.klesun.tsBrowser.addPathToUrl(arg.text, baseUrl);
+                org.klesun.tsBrowser.addPathToUrl(arg.text, baseUrl, importMap);
             dynamicDependencies.push({
                 url: url,
                 ...(url ? {} : {
@@ -118,7 +118,7 @@ const transformStatement = ({statement, sourceFile, baseUrl, ts}) => {
  * @param {ts.CompilerOptions} compilerOptions
  */
 org.klesun.tsBrowser.ParseTsModule_sideEffects = ({
-    fullUrl, tsCode, compilerOptions, ts, addPathToUrl,
+    fullUrl, tsCode, compilerOptions, ts, addPathToUrl, importMap,
 }) => {
     const extension = fullUrl.replace(/^.*\./, '');
     const sourceFile = ts.createSourceFile(
@@ -131,10 +131,12 @@ org.klesun.tsBrowser.ParseTsModule_sideEffects = ({
 
     for (const statement of sourceFile.statements) {
         const kindName = ts.SyntaxKind[statement.kind];
+
         if (kindName === 'ImportDeclaration') {
             const relPath = statement.moduleSpecifier.text;
             const {importClause = null} = statement;
-            const depUrl = addPathToUrl(relPath, fullUrl);
+            const depUrl = addPathToUrl(relPath, fullUrl, importMap);
+
             if (!importClause) {
                 // leaving a blank line so that stack trace matched original lines
                 tsCodeAfterImports += '\n';
@@ -149,7 +151,7 @@ org.klesun.tsBrowser.ParseTsModule_sideEffects = ({
             staticDependencies.push({url: depUrl});
         } else {
             const transformed = transformStatement({
-                statement, baseUrl: fullUrl, sourceFile, ts,
+                statement, baseUrl: fullUrl, sourceFile, ts, importMap
             });
             dynamicDependencies.push(...transformed.dynamicDependencies);
             tsCodeAfterImports += transformed.tsCode + '\n';
